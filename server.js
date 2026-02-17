@@ -18,7 +18,8 @@ app.use(cors({
     "http://localhost:3000", 
     "https://signature.abbadevelop.net",
     "https://restaurantsignature.surge.sh",
-    "https://restaurant-signature.surge.sh"
+    "https://restaurant-signature.surge.sh",
+    "https://restaurant-signature-delta.vercel.app"
     // Ajoute ici l'URL Vercel de ton frontend quand tu l'auras
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
