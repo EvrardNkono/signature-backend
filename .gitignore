@@ -1,0 +1,20 @@
+# Dépendances (Trop lourd pour GitHub)
+node_modules/
+dist/
+build/
+
+# Variables d'environnement (SECRET - Ne jamais partager !)
+.env
+.env.local
+.env.production
+
+# Fichiers système et logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# Dossiers de debug/IDE
+.vscode/
+.idea/
