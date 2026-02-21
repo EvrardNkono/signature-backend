@@ -16,7 +16,7 @@ app.use(cors({
   origin: [
     "http://localhost:5173", 
     "http://localhost:3000", 
-    "https://signature.abbadevelop.net",
+    "https://signature-backend-alpha.vercel.app",
     "https://restaurantsignature.surge.sh",
     "https://restaurant-signature.surge.sh",
     "https://restaurant-signature-delta.vercel.app"
