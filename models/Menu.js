@@ -19,23 +19,38 @@ const MenuSchema = new mongoose.Schema({
     ref: 'Category', 
     required: [true, "La catégorie est obligatoire"]
   },
+
+  // --- NOUVEAU : GESTION DES OFFRES (EX: 3 BIÈRES POUR 5€) ---
+  offer: {
+    enabled: { 
+      type: Boolean, 
+      default: false 
+    },
+    requiredQuantity: { 
+      type: Number, 
+      default: 0 
+    },
+    offerPrice: { 
+      type: Number, 
+      default: 0 
+    }
+  },
   
   // --- GESTION DES ACCOMPAGNEMENTS ---
   hasAccompaniment: { 
     type: Boolean, 
     default: false 
   },
+  // ... (le reste de ton code ne change pas)
   accompaniments: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Accompaniment'
   }],
 
-  // --- GESTION DES SUPPLÉMENTS ---
   allowSupplements: {
     type: Boolean,
     default: false
   },
-  // AJOUT INDISPENSABLE : Le tableau pour stocker les références aux suppléments
   supplements: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Supplement'

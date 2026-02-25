@@ -4,10 +4,12 @@ const Menu = require('../models/Menu');
 // @route   POST /api/menu
 exports.createMenuItem = async (req, res) => {
   try {
+    // 1. Création
     const newItem = await Menu.create(req.body);
     
-    // Ajout de 'supplements' à la liste de population
-    const populatedItem = await newItem.populate(['category', 'accompaniments', 'supplements']);
+    // 2. Population (Correction syntaxe pour Mongoose 6/7/8)
+    const populatedItem = await Menu.findById(newItem._id)
+      .populate(['category', 'accompaniments', 'supplements']);
     
     res.status(201).json({ success: true, data: populatedItem });
   } catch (error) {
@@ -15,20 +17,19 @@ exports.createMenuItem = async (req, res) => {
   }
 };
 
-// @desc    Récupérer tout le menu (avec filtre intelligent pour le front)
+// @desc    Récupérer tout le menu
 // @route   GET /api/menu
 exports.getMenu = async (req, res) => {
   try {
     const isPublicRequest = req.query.public === 'true';
     
-    // Ajout de 'supplements' ici pour que le menu client les affiche
     let query = Menu.find().populate(['category', 'accompaniments', 'supplements']);
 
     const menu = await query.sort({ name: 1 });
 
     let finalData = menu;
     if (isPublicRequest) {
-      // On ne garde que les items dont la catégorie est active
+      // Filtre : Catégorie active + on pourrait ajouter item visible ?
       finalData = menu.filter(item => item.category && item.category.active === true);
     }
 
@@ -38,7 +39,7 @@ exports.getMenu = async (req, res) => {
       data: finalData 
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Erreur serveur lors de la récupération" });
+    res.status(500).json({ success: false, error: "Erreur serveur" });
   }
 };
 
@@ -46,7 +47,7 @@ exports.getMenu = async (req, res) => {
 // @route   PUT /api/menu/:id
 exports.updateMenuItem = async (req, res) => {
   try {
-    // Mise à jour avec renvoi de l'objet totalement peuplé (cat, acc, supps)
+    // { new: true } renvoie l'objet après modification
     const item = await Menu.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
@@ -63,7 +64,6 @@ exports.updateMenuItem = async (req, res) => {
 };
 
 // @desc    Supprimer un plat
-// @route   DELETE /api/menu/:id
 exports.deleteMenuItem = async (req, res) => {
   try {
     const item = await Menu.findByIdAndDelete(req.params.id);
