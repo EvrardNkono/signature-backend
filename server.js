@@ -20,7 +20,6 @@ app.use(cors({
     "https://restaurantsignature.surge.sh",
     "https://restaurant-signature.surge.sh",
     "https://restaurant-signature-delta.vercel.app"
-    // Ajoute ici l'URL Vercel de ton frontend quand tu l'auras
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -43,6 +42,7 @@ const accompanimentRoutes = require('./routes/accompanimentRoutes');
 const supplementRoutes = require('./routes/supplementRoutes');
 const tableRoutes = require('./routes/tableRoutes');
 const orderRoutes = require('./routes/orderRoutes'); 
+const chatRoutes = require('./routes/chatRoutes'); // <--- NOUVEAU : Import Gluttony
 
 // 5. Utilisation des Routes
 app.use('/api/menu', menuRoutes);
@@ -54,6 +54,7 @@ app.use('/api/accompaniments', accompanimentRoutes);
 app.use('/api/supplements', supplementRoutes);
 app.use('/api/tables', tableRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/chat', chatRoutes); // <--- NOUVEAU : Route Gluttony branchée
 
 // Route de test
 app.get('/', (req, res) => {
@@ -69,7 +70,7 @@ if (process.env.NODE_ENV !== 'production') {
     console.log(`-----------------------------------------`);
     console.log(`[Serveur] Lancé sur le port ${PORT}`);
     console.log(`[Mode] Développement`);
-    console.log(`[Status] Menu, Categories, Suppléments & Orders OK`); 
+    console.log(`[Status] Menu, Categories, Orders & Gluttony Chatbot OK`); 
     console.log(`-----------------------------------------`);
   });
 }
