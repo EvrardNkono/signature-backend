@@ -1,33 +1,30 @@
 const mongoose = require('mongoose');
 
+// On garde la connexion en mémoire pour la réutiliser entre les appels
+let isConnected = false;
+
 const connectDB = async () => {
+  if (isConnected) {
+    return; // Si déjà connecté, on ne fait rien
+  }
+
   try {
-    // On récupère l'URL Cloud en priorité, peu importe le mode (prod ou dev)
     const dbUri = process.env.MONGO_URI;
 
     if (!dbUri) {
-      throw new Error("La variable MONGO_URI est absente du fichier .env");
+      console.error("ERREUR : MONGO_URI manquante dans les variables d'environnement.");
+      return; 
     }
 
-    // Connexion avec des options robustes
     const conn = await mongoose.connect(dbUri);
 
-    console.log(`-----------------------------------------`);
-    console.log(`[MongoDB] Connexion réussie : ${conn.connection.host}`);
-    console.log(`[Base de données] : ${conn.connection.name}`);
-    console.log(`[Mode] : ${process.env.NODE_ENV}`);
-    console.log(`[Source] : CLOUD (Atlas)`);
-    console.log(`-----------------------------------------`);
-  } catch (error) {
-    console.error(`-----------------------------------------`);
-    console.error(`[Erreur MongoDB] ${error.message}`);
+    isConnected = conn.connections[0].readyState;
     
-    if (process.env.NODE_ENV !== 'production') {
-      console.log("ASTUCE : Vérifie que ton IP est autorisée sur MongoDB Atlas (Network Access)");
-    }
-    console.error(`-----------------------------------------`);
-
-    process.exit(1);
+    console.log(`[MongoDB] Connecté : ${conn.connection.host}`);
+  } catch (error) {
+    console.error(`[Erreur MongoDB] : ${error.message}`);
+    // SURTOUT PAS de process.exit(1) ici sur Vercel
+    throw error; // On laisse l'erreur remonter pour que Vercel puisse la logger
   }
 };
 
