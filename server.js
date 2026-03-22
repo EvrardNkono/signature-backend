@@ -19,7 +19,8 @@ app.use(cors({
     "https://signature-backend-alpha.vercel.app",
     "https://restaurantsignature.surge.sh",
     "https://restaurant-signature.surge.sh",
-    "https://restaurant-signature-delta.vercel.app"
+    "https://restaurant-signature-delta.vercel.app",
+    "https://restaurant-signature-23tjk4ljf-evrardnkonos-projects.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
