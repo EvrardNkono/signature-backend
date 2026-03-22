@@ -15,7 +15,7 @@ const generateChatResponse = async (message, history = []) => {
         },
         {
           role: "model",
-          parts: [{ text: "Je comprends parfaitement. Je serai l'expression de l'élégance concise, sans jamais laisser une phrase inachevée." }]
+          parts: [{ text: "Je comprends parfaitement. Je serai l'expression de l'élégance concise, sans jamais laisser une phrase inachevée..." }]
         },
         ...history.slice(-4).map(msg => ({
           role: msg.role === 'assistant' ? 'model' : 'user',
