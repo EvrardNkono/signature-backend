@@ -21,7 +21,9 @@ app.use(cors({
     "https://restaurant-signature.surge.sh",
     "https://restaurant-signature-delta.vercel.app",
     "https://restaurant-signature-23tjk4ljf-evrardnkonos-projects.vercel.app",
-    "https://restaurantsignature.fr"
+    "https://restaurantsignature.fr",
+    "https://www.restaurantsignature.fr", 
+    "https://restaurantsignature.fr/"    
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
