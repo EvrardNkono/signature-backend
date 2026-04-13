@@ -2,10 +2,16 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 exports.createCheckoutSession = async (req, res) => {
     try {
-        const { items, orderId, amountCustom } = req.body;
+        const { items, orderId } = req.body;
+
+        // --- INTELLIGENCE AUTO-DÉTECTION ---
+        // Si NODE_ENV est 'production', on utilise l'URL réelle, sinon localhost.
+        // La plupart des hébergeurs (Vercel, Render, etc.) règlent NODE_ENV sur 'production' automatiquement.
+        const frontendUrl = process.env.NODE_ENV === 'production'
+            ? "https://ton-site-signature.fr" // Remplace par ton vrai nom de domaine
+            : "http://localhost:5173";
 
         const line_items = items.map(item => {
-            // On crée un objet de base pour price_data
             const priceData = {
                 currency: 'eur',
                 unit_amount: Math.round(item.price * 100),
@@ -14,7 +20,6 @@ exports.createCheckoutSession = async (req, res) => {
                 },
             };
 
-            // On n'ajoute la description QUE si elle contient du texte utile
             if (item.chosenAccompaniment && item.chosenAccompaniment !== "Aucun") {
                 priceData.product_data.description = `Acc: ${item.chosenAccompaniment}`;
             }
@@ -30,8 +35,9 @@ exports.createCheckoutSession = async (req, res) => {
             line_items,
             mode: 'payment',
             metadata: { orderId: orderId },
-            success_url: `${process.env.FRONTEND_URL}/order-success?orderId=${orderId}`,
-            cancel_url: `${process.env.FRONTEND_URL}/cart?canceled=true`,
+            // Utilisation de l'URL détectée automatiquement
+            success_url: `${frontendUrl}/order-success?orderId=${orderId}`,
+            cancel_url: `${frontendUrl}/panier?canceled=true`,
         });
 
         res.status(200).json({ url: session.url });
