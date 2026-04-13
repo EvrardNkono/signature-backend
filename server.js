@@ -11,9 +11,17 @@ connectDB();
 
 const app = express();
 
+// --- CONFIGURATION STRIPE WEBHOOK (Doit être avant express.json) ---
+// On n'utilise cette route que si on veut valider les paiements automatiquement
+app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+    // Logique de vérification de signature Stripe à implémenter ici ou dans un contrôleur
+    res.status(200).send({ received: true });
+});
+
 // 3. Middlewares
 app.use(cors({
   origin: [
+    "http://localhost:5174",
     "http://localhost:5173", 
     "http://localhost:3000", 
     "https://signature-backend-alpha.vercel.app",
@@ -22,16 +30,14 @@ app.use(cors({
     "https://restaurant-signature-delta.vercel.app",
     "https://restaurant-signature-23tjk4ljf-evrardnkonos-projects.vercel.app",
     "https://restaurantsignature.fr",
-    "https://www.restaurantsignature.fr", 
-    "https://restaurantsignature.fr/"    
+    "https://www.restaurantsignature.fr"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
   credentials: true
 }));
 
 /** * OPTIMISATION POUR L'UPLOAD D'IMAGES (Base64)
- * Augmentation de la limite pour supporter les chaînes de caractères d'images
  */
 app.use(express.json({ limit: '20mb' })); 
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
@@ -46,7 +52,8 @@ const accompanimentRoutes = require('./routes/accompanimentRoutes');
 const supplementRoutes = require('./routes/supplementRoutes');
 const tableRoutes = require('./routes/tableRoutes');
 const orderRoutes = require('./routes/orderRoutes'); 
-const chatRoutes = require('./routes/chatRoutes'); // <--- NOUVEAU : Import Gluttony
+const chatRoutes = require('./routes/chatRoutes');
+const paymentRoutes = require('./routes/paymentRoutes'); // <--- NOUVEAU
 
 // 5. Utilisation des Routes
 app.use('/api/menu', menuRoutes);
@@ -58,23 +65,25 @@ app.use('/api/accompaniments', accompanimentRoutes);
 app.use('/api/supplements', supplementRoutes);
 app.use('/api/tables', tableRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/chat', chatRoutes); // <--- NOUVEAU : Route Gluttony branchée
+app.use('/api/chat', chatRoutes);
+app.use('/api/payments', paymentRoutes); // <--- NOUVEAU
 
 // Route de test
 app.get('/', (req, res) => {
-  res.send('✦ API Signature lancée et opérationnelle sur Vercel... ✦');
+  res.send('✦ API Signature lancée et opérationnelle... ✦');
 });
 
 // 6. Gestion du Port & Exportation
 const PORT = process.env.PORT || 5000;
 
-// IMPORTANT : On ne lance le serveur avec app.listen que si on n'est PAS sur Vercel
-if (process.env.NODE_ENV !== 'production') {
+// On lance le serveur si on est en local (pas sur Vercel) 
+// ou si NODE_ENV n'est pas strictement 'production'
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`-----------------------------------------`);
     console.log(`[Serveur] Lancé sur le port ${PORT}`);
-    console.log(`[Mode] Développement`);
-    console.log(`[Status] Menu, Categories, Orders & Gluttony Chatbot OK`); 
+    console.log(`[Mode] ${process.env.NODE_ENV}`);
+    console.log(`[Status] Routes & Paiements Stripe OK`); 
     console.log(`-----------------------------------------`);
   });
 }

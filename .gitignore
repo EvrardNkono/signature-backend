@@ -18,3 +18,5 @@ Thumbs.db
 # Dossiers de debug/IDE
 .vscode/
 .idea/
+.vercel
+.env*.local
