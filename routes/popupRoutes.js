@@ -1,7 +1,7 @@
 // routes/popupRoutes.js
 const express = require('express');
 const router = express.Router();
-const Popup = require('../models/Popup'); // Nouveau modèle
+const Popup = require('../models/Popup');
 
 // ==================== ADMIN (CRUD complet) ====================
 
@@ -11,6 +11,7 @@ router.get('/admin', async (req, res) => {
     const popups = await Popup.find().sort({ order: 1 });
     res.json({ success: true, data: popups });
   } catch (err) {
+    console.error("Erreur GET /admin:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -21,26 +22,44 @@ router.get('/active', async (req, res) => {
     const popups = await Popup.find({ isActive: true }).sort({ order: 1 });
     res.json({ success: true, data: popups });
   } catch (err) {
+    console.error("Erreur GET /active:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // Créer une nouvelle popup
 router.post('/', async (req, res) => {
+  console.log("📥 [POST] Données reçues:", JSON.stringify(req.body, null, 2));
+  
   try {
-    const { order, isActive } = req.body;
+    const { order, isActive, title, description, image, link, duration, backgroundColor, textColor } = req.body;
+    
+    // Validation des champs requis
+    const errors = [];
+    if (!title) errors.push("Le titre est obligatoire");
+    if (!description) errors.push("La description est obligatoire");
+    if (!image) errors.push("L'image est obligatoire");
+    
+    if (errors.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: errors.join(", ")
+      });
+    }
     
     // Vérifier si l'ordre existe déjà
-    const existingOrder = await Popup.findOne({ order });
+    const orderValue = order || 1;
+    const existingOrder = await Popup.findOne({ order: orderValue });
     if (existingOrder) {
       return res.status(400).json({ 
         success: false, 
-        message: `Une popup existe déjà à la position ${order}` 
+        message: `Une popup existe déjà à la position ${orderValue}` 
       });
     }
     
     // Vérifier la limite de 4 popups actives
-    if (isActive !== false) {
+    const isActiveValue = isActive !== undefined ? isActive : true;
+    if (isActiveValue) {
       const activeCount = await Popup.countDocuments({ isActive: true });
       if (activeCount >= 4) {
         return res.status(400).json({ 
@@ -50,18 +69,40 @@ router.post('/', async (req, res) => {
       }
     }
     
-    const popup = new Popup(req.body);
+    // Création de la popup
+    const now = Date.now();
+    const popupData = {
+      title: title.trim(),
+      description: description.trim(),
+      image: image.trim(),
+      link: link && link !== "#" ? link.trim() : "#",
+      duration: duration && duration >= 2 && duration <= 30 ? duration : 5,
+      order: orderValue,
+      isActive: isActiveValue,
+      backgroundColor: backgroundColor || "#2D2422",
+      textColor: textColor || "#D4AF37",
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const popup = new Popup(popupData);
     await popup.save();
+    
+    console.log("✅ [POST] Popup créée avec succès:", popup._id);
     res.status(201).json({ success: true, data: popup });
+    
   } catch (err) {
+    console.error("❌ [POST] Erreur création popup:", err);
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
 // Mettre à jour une popup
 router.put('/:id', async (req, res) => {
+  console.log("📥 [PUT] Données reçues pour ID:", req.params.id);
+  
   try {
-    const { order, isActive } = req.body;
+    const { order, isActive, title, description, image, link, duration, backgroundColor, textColor } = req.body;
     const popup = await Popup.findById(req.params.id);
     
     if (!popup) {
@@ -77,6 +118,7 @@ router.put('/:id', async (req, res) => {
           message: `Une popup existe déjà à la position ${order}` 
         });
       }
+      popup.order = order;
     }
     
     // Si on active une popup, vérifier la limite de 4
@@ -88,32 +130,52 @@ router.put('/:id', async (req, res) => {
           message: "Vous ne pouvez pas activer plus de 4 popups" 
         });
       }
+      popup.isActive = true;
+    } else if (isActive === false) {
+      popup.isActive = false;
     }
     
-    Object.assign(popup, req.body);
+    // Mise à jour des champs
+    if (title) popup.title = title.trim();
+    if (description) popup.description = description.trim();
+    if (image) popup.image = image.trim();
+    if (link !== undefined) popup.link = link && link !== "#" ? link.trim() : "#";
+    if (duration && duration >= 2 && duration <= 30) popup.duration = duration;
+    if (backgroundColor) popup.backgroundColor = backgroundColor;
+    if (textColor) popup.textColor = textColor;
+    
     popup.updatedAt = Date.now();
     await popup.save();
+    
+    console.log("✅ [PUT] Popup mise à jour:", popup._id);
     res.json({ success: true, data: popup });
+    
   } catch (err) {
+    console.error("❌ [PUT] Erreur mise à jour:", err);
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
 // Supprimer une popup
 router.delete('/:id', async (req, res) => {
+  console.log("📥 [DELETE] Suppression ID:", req.params.id);
+  
   try {
     const popup = await Popup.findByIdAndDelete(req.params.id);
     if (!popup) {
       return res.status(404).json({ success: false, message: "Popup non trouvée" });
     }
+    
+    console.log("✅ [DELETE] Popup supprimée:", popup._id);
     res.json({ success: true, message: "Popup supprimée" });
+    
   } catch (err) {
+    console.error("❌ [DELETE] Erreur suppression:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // ==================== COMPATIBILITÉ ANCIENNE API ====================
-// Pour garder la compatibilité avec votre ancien système (une seule popup)
 
 // Récupérer la configuration principale (la première popup active)
 router.get('/', async (req, res) => {
@@ -125,45 +187,71 @@ router.get('/', async (req, res) => {
         description: mainPopup.description,
         image: mainPopup.image,
         isActive: mainPopup.isActive,
-        duration: mainPopup.duration
+        duration: mainPopup.duration,
+        link: mainPopup.link,
+        backgroundColor: mainPopup.backgroundColor,
+        textColor: mainPopup.textColor
       });
     } else {
-      res.json({ title: "", description: "", isActive: false, image: "" });
+      res.json({ 
+        title: "Offre Spéciale", 
+        description: "Découvrez nos délices", 
+        isActive: false, 
+        image: "",
+        duration: 5,
+        link: "#",
+        backgroundColor: "#2D2422",
+        textColor: "#D4AF37"
+      });
     }
   } catch (err) {
+    console.error("Erreur GET /:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
 // Mettre à jour la configuration principale (ancienne méthode)
 router.post('/update', async (req, res) => {
+  console.log("📥 [POST /update] Données reçues:", req.body);
+  
   try {
-    const { title, description, image, isActive } = req.body;
+    const { title, description, image, isActive, link, duration, backgroundColor, textColor } = req.body;
     
-    // Chercher la première popup active ou en créer une
     let mainPopup = await Popup.findOne({ order: 1 });
     
     if (mainPopup) {
-      mainPopup.title = title;
-      mainPopup.description = description;
-      mainPopup.image = image;
-      mainPopup.isActive = isActive !== undefined ? isActive : mainPopup.isActive;
+      if (title) mainPopup.title = title;
+      if (description) mainPopup.description = description;
+      if (image) mainPopup.image = image;
+      if (isActive !== undefined) mainPopup.isActive = isActive;
+      if (link) mainPopup.link = link;
+      if (duration) mainPopup.duration = duration;
+      if (backgroundColor) mainPopup.backgroundColor = backgroundColor;
+      if (textColor) mainPopup.textColor = textColor;
       mainPopup.updatedAt = Date.now();
       await mainPopup.save();
     } else {
       mainPopup = new Popup({
-        title,
-        description,
-        image,
+        title: title || "Offre Spéciale",
+        description: description || "Découvrez nos délices",
+        image: image || "",
         isActive: isActive !== undefined ? isActive : true,
         order: 1,
-        duration: 5
+        duration: duration || 5,
+        link: link || "#",
+        backgroundColor: backgroundColor || "#2D2422",
+        textColor: textColor || "#D4AF37",
+        createdAt: Date.now(),
+        updatedAt: Date.now()
       });
       await mainPopup.save();
     }
     
+    console.log("✅ [POST /update] Configuration mise à jour");
     res.json(mainPopup);
+    
   } catch (err) {
+    console.error("❌ [POST /update] Erreur:", err);
     res.status(400).json({ message: "Impossible de mettre à jour la publicité" });
   }
 });

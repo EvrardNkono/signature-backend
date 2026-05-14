@@ -20,17 +20,15 @@ const PopupSchema = new mongoose.Schema({
   },
   duration: { 
     type: Number, 
-    required: [true, "La durée d'affichage est obligatoire"],
+    default: 5,
     min: 2,
-    max: 30,
-    default: 5
+    max: 30
   },
   order: { 
     type: Number, 
     required: true,
     min: 1,
-    max: 4,
-    unique: true
+    max: 4
   },
   isActive: { 
     type: Boolean, 
@@ -54,16 +52,6 @@ const PopupSchema = new mongoose.Schema({
   }
 });
 
-// Middleware pour mettre à jour updatedAt
-PopupSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-// Vérifier qu'on ne dépasse pas 4 popups actives
-PopupSchema.statics.canAddPopup = async function() {
-  const count = await this.countDocuments({ isActive: true });
-  return count < 4;
-};
+// ⚠️ PAS DE pre('save') - il cause l'erreur "next is not a function"
 
 module.exports = mongoose.model('Popup', PopupSchema);
