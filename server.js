@@ -12,9 +12,7 @@ connectDB();
 const app = express();
 
 // --- CONFIGURATION STRIPE WEBHOOK (Doit être avant express.json) ---
-// On n'utilise cette route que si on veut valider les paiements automatiquement
 app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-    // Logique de vérification de signature Stripe à implémenter ici ou dans un contrôleur
     res.status(200).send({ received: true });
 });
 
@@ -37,8 +35,6 @@ app.use(cors({
   credentials: true
 }));
 
-/** * OPTIMISATION POUR L'UPLOAD D'IMAGES (Base64)
- */
 app.use(express.json({ limit: '20mb' })); 
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
@@ -53,7 +49,8 @@ const supplementRoutes = require('./routes/supplementRoutes');
 const tableRoutes = require('./routes/tableRoutes');
 const orderRoutes = require('./routes/orderRoutes'); 
 const chatRoutes = require('./routes/chatRoutes');
-const paymentRoutes = require('./routes/paymentRoutes'); // <--- NOUVEAU
+const paymentRoutes = require('./routes/paymentRoutes');
+const popupRoutes = require('./routes/popupRoutes'); // ← AJOUT ICI
 
 // 5. Utilisation des Routes
 app.use('/api/menu', menuRoutes);
@@ -66,7 +63,8 @@ app.use('/api/supplements', supplementRoutes);
 app.use('/api/tables', tableRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/chat', chatRoutes);
-app.use('/api/payments', paymentRoutes); // <--- NOUVEAU
+app.use('/api/payments', paymentRoutes);
+app.use('/api/popups', popupRoutes); // ← AJOUT ICI
 
 // Route de test
 app.get('/', (req, res) => {
@@ -76,17 +74,15 @@ app.get('/', (req, res) => {
 // 6. Gestion du Port & Exportation
 const PORT = process.env.PORT || 5000;
 
-// On lance le serveur si on est en local (pas sur Vercel) 
-// ou si NODE_ENV n'est pas strictement 'production'
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`-----------------------------------------`);
     console.log(`[Serveur] Lancé sur le port ${PORT}`);
     console.log(`[Mode] ${process.env.NODE_ENV}`);
-    console.log(`[Status] Routes & Paiements Stripe OK`); 
+    console.log(`[Status] Routes & Paiements Stripe OK`);
+    console.log(`[Popup] Routes disponibles sur /api/popups`); // ← NOUVEAU
     console.log(`-----------------------------------------`);
   });
 }
 
-// Exportation pour Vercel
 module.exports = app;
