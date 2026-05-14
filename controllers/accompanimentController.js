@@ -10,7 +10,8 @@ exports.getAll = async (req, res) => {
   }
 };
 
-// Créer
+
+// Créeer
 exports.create = async (req, res) => {
   try {
     const item = await Accompaniment.create(req.body);
