@@ -40,7 +40,7 @@ app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
 // 4. Importation des Routes
 const menuRoutes = require('./routes/menuRoutes');
-const adRoutes = require('./routes/adRoutes');
+
 const bannerRoutes = require('./routes/bannerRoutes'); 
 const uberRoutes = require('./routes/uberRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -54,7 +54,7 @@ const popupRoutes = require('./routes/popupRoutes'); // ← AJOUT ICI
 
 // 5. Utilisation des Routes
 app.use('/api/menu', menuRoutes);
-app.use('/api/ads', adRoutes);
+
 app.use('/api/banner', bannerRoutes); 
 app.use('/api/uber', uberRoutes); 
 app.use('/api/categories', categoryRoutes);
