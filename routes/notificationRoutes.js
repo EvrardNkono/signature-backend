@@ -1,83 +1,14 @@
 // routes/notificationRoutes.js
 const express = require('express');
 const router = express.Router();
-const admin = require('firebase-admin');
 
-// Fonction d'initialisation dynamique utilisant le décodage Base64 pour Vercel
-// routes/notificationRoutes.js
-
-function getFirebaseAdminMessaging() {
-  // Si l'application a été mal initialisée lors d'une exécution précédente, on la supprime pour repartir à neuf
-  if (admin.apps.length > 0) {
-    try {
-      // Optionnel : décommente la ligne suivante si le problème persiste pour forcer le clean à chaque appel Serverless éphémère
-      // admin.app().delete();
-    } catch(e) {}
-  }
-
-  if (admin.apps.length === 0) {
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
-      throw new Error("Variables d'environnement Firebase manquantes dans le .env !");
-    }
-
-    try {
-      let rawKey = process.env.FIREBASE_PRIVATE_KEY.trim();
-      let privateKeyDecoded = '';
-
-      // DOUBLE SÉCURITÉ : On vérifie si la clé reçue est du Base64 ou du texte brut
-      if (!rawKey.includes("-----BEGIN PRIVATE KEY-----")) {
-        // C'est du Base64, on le décode
-        privateKeyDecoded = Buffer.from(rawKey, 'base64').toString('utf8');
-      } else {
-        // C'est du texte brut, on applique le nettoyage classique
-        if (rawKey.startsWith('"') && rawKey.endsWith('"')) rawKey = rawKey.slice(1, -1);
-        privateKeyDecoded = rawKey.replace(/\\n/g, '\n');
-      }
-
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: privateKeyDecoded,
-        }),
-      });
-      console.log("✅ SDK Firebase Admin initialisé avec succès !");
-    } catch (error) {
-      console.error("❌ Échec de l'initialisation de Firebase Admin:", error);
-      throw error;
-    }
-  }
-  return admin.messaging();
-}
+const API_KEY = process.env.FIREBASE_API_KEY;
+const PROJECT_ID = "restaurant-signature-16476";
 
 let adminTokens = [];
 
-// Fonction d'envoi utilisant l'instance dynamique décodée
-async function sendNotification(token, title, body) {
-  const message = {
-    token: token,
-    notification: {
-      title: title,
-      body: body
-    }
-  };
-
-  try {
-    const messaging = getFirebaseAdminMessaging();
-    const response = await messaging.send(message);
-    return { success: true, messageId: response };
-  } catch (error) {
-    console.error("❌ Erreur FCM d'envoi:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-// --- Les Routes ---
-
 router.post('/register-admin', (req, res) => {
   const { token } = req.body;
-  if (!token) return res.status(400).json({ success: false, error: 'Token requis' });
-  
   if (!adminTokens.includes(token)) {
     adminTokens.push(token);
     console.log(`✅ Token enregistré (${adminTokens.length})`);
@@ -92,14 +23,36 @@ router.post('/test-token', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Token manquant' });
   }
   
-  const result = await sendNotification(token, '🔔 Test', 'Notification fonctionnelle !');
-  
-  if (result.success) {
-    console.log('✅ Test réussi');
-    res.json({ success: true });
-  } else {
-    console.error('❌ Test échoué:', result.error);
-    res.status(400).json({ success: false, error: result.error });
+  try {
+    const response = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: {
+          token: token,
+          notification: {
+            title: 'Test',
+            body: 'Notification fonctionnelle !'
+          }
+        }
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      console.log('✅ Test réussi');
+      res.json({ success: true, data });
+    } else {
+      console.error('❌ Test échoué:', data);
+      res.status(400).json({ success: false, error: data.error?.message });
+    }
+  } catch (error) {
+    console.error('💥 Erreur:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -110,7 +63,7 @@ router.post('/new-order', async (req, res) => {
   console.log(`📨 Envoi à ${adminTokens.length} admin(s)`);
   
   if (adminTokens.length === 0) {
-    return res.json({ success: false, message: 'Aucun admin enregistré' });
+    return res.json({ success: false, message: 'Aucun admin' });
   }
   
   let messageBody = `${customerName} - ${total}€`;
@@ -118,13 +71,44 @@ router.post('/new-order', async (req, res) => {
   else if (tableNumber) messageBody = `🍽️ Table ${tableNumber}: ${messageBody}`;
   
   let successCount = 0;
+  let errors = [];
+  
   for (const token of adminTokens) {
-    const result = await sendNotification(token, '🆕 Nouvelle commande !', messageBody);
-    if (result.success) successCount++;
+    try {
+      const response = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: {
+            token: token,
+            notification: {
+              title: '🆕 Nouvelle commande !',
+              body: messageBody
+            },
+            data: {
+              orderId: orderId,
+              type: 'new_order'
+            }
+          }
+        })
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        successCount++;
+      } else {
+        errors.push(data.error?.message);
+      }
+    } catch (error) {
+      errors.push(error.message);
+    }
   }
   
   console.log(`✅ Notification: ${successCount} succès`);
-  res.json({ success: true, successCount });
+  res.json({ success: true, successCount, errors });
 });
 
 router.get('/stats', (req, res) => {
