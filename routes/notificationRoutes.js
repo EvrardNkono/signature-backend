@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { GoogleAuth } = require('google-auth-library');
+const crypto = require('crypto');
 
 const PROJECT_ID = "restaurant-signature-16476";
-
-const crypto = require('crypto');
 
 async function getAccessToken() {
   if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -29,6 +28,15 @@ async function getAccessToken() {
       throw new Error("Impossible de parser FIREBASE_SERVICE_ACCOUNT");
     }
   }
+
+  // === DEBUG TEMPORAIRE - À SUPPRIMER APRÈS ===
+  console.log('=== DEBUG CLÉ ===');
+  console.log('Début clé:', JSON.stringify(credentials.private_key.substring(0, 60)));
+  console.log('Fin clé:', JSON.stringify(credentials.private_key.substring(credentials.private_key.length - 60)));
+  console.log('Contient \\n littéral:', credentials.private_key.includes('\\n'));
+  console.log('Contient vrai newline:', credentials.private_key.includes('\n'));
+  console.log('=================');
+  // ============================================
 
   // Nettoyage AGRESSIF de la clé privée
   let privateKey = credentials.private_key;
@@ -158,7 +166,6 @@ router.post('/new-order', async (req, res) => {
   try {
     const oauth2Token = await getAccessToken();
 
-    // Envoi en parallèle via Promise.allSettled pour éviter les goulots d'étranglement
     const notificationPromises = adminTokens.map(async (token) => {
       try {
         const response = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
