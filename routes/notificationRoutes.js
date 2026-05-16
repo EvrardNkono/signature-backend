@@ -13,20 +13,19 @@ async function getAccessToken() {
 
   let privateKey = process.env.FIREBASE_PRIVATE_KEY.trim();
 
-  // 1. On vire d'abord les guillemets parasites ajoutés par Vercel
+  // 1. On vire les guillemets parasites de Vercel
   if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
   if (privateKey.startsWith("'") && privateKey.endsWith("'")) privateKey = privateKey.slice(1, -1);
   
   privateKey = privateKey.trim();
 
-  // 2. Maintenant on check sereinement si c'est du Base64 ou du texte brut
+  // 2. Décoder le Base64 si ce n'est pas du texte brut
   if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
-    // C'est du Base64 pur
     privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
-  } else {
-    // C'est du texte brut, on remplace les sauts de ligne textuels
-    privateKey = privateKey.replace(/\\n/g, '\n');
   }
+
+  // 3. CRUCIAL : Remplacer les \n textuels par de vrais sauts de ligne cryptographiques
+  privateKey = privateKey.replace(/\\n/g, '\n');
 
   // Configuration de l'authentification Google OAuth2
   const auth = new GoogleAuth({
