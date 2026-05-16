@@ -3,20 +3,24 @@ const express = require('express');
 const router = express.Router();
 const admin = require('firebase-admin');
 
-// Fonction d'initialisation dynamique indispensable pour l'environnement Serverless (Vercel)
+// Fonction d'initialisation dynamique renforcée pour contrer les caprices d'encodage de Vercel
 function getFirebaseAdminMessaging() {
   if (admin.apps.length === 0) {
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
       throw new Error("Variables d'environnement Firebase manquantes dans le .env !");
     }
 
-    // Nettoyage de la clé privée (gestion des guillemets doubles ajoutés par Vercel)
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY.trim();
+
+    // 1. Nettoyage des guillemets doubles ou simples que Vercel encapsule parfois autour de la chaîne
     if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
       privateKey = privateKey.slice(1, -1);
     }
+    if (privateKey.startsWith("'") && privateKey.endsWith("'")) {
+      privateKey = privateKey.slice(1, -1);
+    }
     
-    // Remplacement des anti-slash n textuels par des vrais sauts de ligne
+    // 2. Remplacement agressif des séquences d'échappement (\\\\n ou \\n) par de réels sauts de ligne
     privateKey = privateKey.replace(/\\n/g, '\n');
 
     try {
@@ -27,7 +31,7 @@ function getFirebaseAdminMessaging() {
           privateKey: privateKey,
         }),
       });
-      console.log("🚀 Firebase Admin initialisé dynamiquement avec succès !");
+      console.log("🚀 Firebase Admin initialisé avec nettoyage agressif de la clé !");
     } catch (error) {
       console.error("❌ Échec de l'initialisation dynamique de Firebase Admin:", error);
       throw error;
@@ -38,7 +42,7 @@ function getFirebaseAdminMessaging() {
 
 let adminTokens = [];
 
-// Fonction d'envoi utilisant l'instance dynamique
+// Fonction d'envoi utilisant l'instance dynamique renforcée
 async function sendNotification(token, title, body) {
   const message = {
     token: token,
