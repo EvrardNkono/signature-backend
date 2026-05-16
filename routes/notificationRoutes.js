@@ -4,7 +4,8 @@ const { GoogleAuth } = require('google-auth-library');
 
 const PROJECT_ID = "restaurant-signature-16476";
 
-// Fonction robuste pour générer un jeton d'accès OAuth2 valide à la volée
+const crypto = require('crypto');
+
 async function getAccessToken() {
   if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
     throw new Error("Variable d'environnement FIREBASE_SERVICE_ACCOUNT manquante !");
@@ -12,42 +13,74 @@ async function getAccessToken() {
 
   let credentialsStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
 
-  // Nettoyage des guillemets parasites
+  // Nettoyage guillemets
   if (credentialsStr.startsWith('"') && credentialsStr.endsWith('"'))
     credentialsStr = credentialsStr.slice(1, -1);
   if (credentialsStr.startsWith("'") && credentialsStr.endsWith("'"))
     credentialsStr = credentialsStr.slice(1, -1);
-  credentialsStr = credentialsStr.trim();
 
   let credentials;
-
   try {
     credentials = JSON.parse(credentialsStr);
-  } catch (jsonError) {
+  } catch {
     try {
-      const decodedSign = Buffer.from(credentialsStr, 'base64').toString('utf8');
-      credentials = JSON.parse(decodedSign);
-    } catch (base64Error) {
-      throw new Error("Échec critique : Le contenu n'est ni du JSON valide, ni du Base64 correct.");
+      credentials = JSON.parse(Buffer.from(credentialsStr, 'base64').toString('utf8'));
+    } catch {
+      throw new Error("Impossible de parser FIREBASE_SERVICE_ACCOUNT");
     }
   }
 
-  // ✅ FIX CRITIQUE : restaurer les vrais sauts de ligne dans la clé privée
-  if (credentials.private_key) {
-    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+  // Nettoyage AGRESSIF de la clé privée
+  let privateKey = credentials.private_key;
+
+  // Étape 1 : remplacer tous les \n littéraux (y compris \\n, \\\\n, etc.)
+  privateKey = privateKey.replace(/\\+n/g, '\n');
+
+  // Étape 2 : si la clé est sur une seule ligne (sans vrais sauts), la reformater
+  if (!privateKey.includes('\n')) {
+    privateKey = privateKey
+      .replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
+      .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----')
+      .replace(/(.{64})/g, '$1\n');
   }
 
-  const auth = new GoogleAuth({
-    credentials: {
-      client_email: credentials.client_email,
-      private_key: credentials.private_key,
-    },
-    scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+  // Étape 3 : construire manuellement le JWT et appeler token_uri directement
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    iss: credentials.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  })).toString('base64url');
+
+  const signingInput = `${header}.${payload}`;
+
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(signingInput);
+  const signature = sign.sign(privateKey, 'base64url');
+
+  const jwt = `${signingInput}.${signature}`;
+
+  // Échange du JWT contre un access token
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
   });
 
-  const client = await auth.getClient();
-  const tokenResponse = await client.getAccessToken();
-  return tokenResponse.token;
+  const tokenData = await tokenRes.json();
+
+  if (!tokenData.access_token) {
+    console.error('❌ Réponse Google:', JSON.stringify(tokenData));
+    throw new Error(`Échec token Google: ${tokenData.error_description || tokenData.error}`);
+  }
+
+  return tokenData.access_token;
 }
 
 let adminTokens = [];
