@@ -7,7 +7,7 @@ const admin = require('firebase-admin');
 if (!admin.apps.length) {
   try {
     // Chemin vers ton fichier JSON téléchargé depuis Firebase Console
-    const serviceAccount = require('./firebase-adminsdk.json');
+    const serviceAccount = require('../firebase-adminsdk.json');
     
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
