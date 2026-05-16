@@ -3,7 +3,8 @@ const express = require('express');
 const router = express.Router();
 
 // ✅ Utilisation de l'API REST Firebase (pas besoin du SDK Admin)
-const FIREBASE_SERVER_KEY = process.env.FIREBASE_SERVER_KEY;
+// CORRECTION : Utilise FIREBASE_API_KEY au lieu de FIREBASE_SERVER_KEY
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.FIREBASE_SERVER_KEY;
 
 // Stockage temporaire des tokens (en production, utilisez une base de données)
 let adminTokens = [];
@@ -32,8 +33,8 @@ router.post('/new-order', async (req, res) => {
     return res.json({ success: false, message: 'Aucun admin enregistré' });
   }
   
-  if (!FIREBASE_SERVER_KEY) {
-    console.error('❌ FIREBASE_SERVER_KEY non configurée');
+  if (!FIREBASE_API_KEY) {
+    console.error('❌ FIREBASE_API_KEY non configurée');
     return res.status(500).json({ success: false, error: 'Clé Firebase manquante' });
   }
   
@@ -65,7 +66,7 @@ router.post('/new-order', async (req, res) => {
     const response = await fetch('https://fcm.googleapis.com/fcm/send', {
       method: 'POST',
       headers: {
-        'Authorization': `key=${FIREBASE_SERVER_KEY}`,
+        'Authorization': `key=${FIREBASE_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -96,7 +97,7 @@ router.post('/test-token', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Token manquant' });
   }
   
-  if (!FIREBASE_SERVER_KEY) {
+  if (!FIREBASE_API_KEY) {
     return res.status(500).json({ success: false, error: 'Clé Firebase manquante' });
   }
   
@@ -114,7 +115,7 @@ router.post('/test-token', async (req, res) => {
     const response = await fetch('https://fcm.googleapis.com/fcm/send', {
       method: 'POST',
       headers: {
-        'Authorization': `key=${FIREBASE_SERVER_KEY}`,
+        'Authorization': `key=${FIREBASE_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
