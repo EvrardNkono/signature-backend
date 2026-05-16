@@ -5,6 +5,36 @@ const crypto = require('crypto');
 
 const PROJECT_ID = "restaurant-signature-16476";
 
+// ========== ROUTE DE DIAGNOSTIC - À SUPPRIMER APRÈS RÉSOLUTION ==========
+router.get('/debug-env', (req, res) => {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT || 'MANQUANTE';
+  const first50 = raw.substring(0, 50);
+  const last50 = raw.substring(raw.length - 50);
+  const length = raw.length;
+  
+  // Tente JSON
+  let jsonOk = false;
+  let base64Ok = false;
+  
+  try { JSON.parse(raw); jsonOk = true; } catch(e) {}
+  try { JSON.parse(Buffer.from(raw, 'base64').toString('utf8')); base64Ok = true; } catch(e) {}
+  
+  res.json({ 
+    exists: raw !== 'MANQUANTE',
+    length, 
+    first50, 
+    last50, 
+    jsonOk, 
+    base64Ok,
+    // Affiche si la variable contient des caractères suspects
+    startsWithQuote: raw.startsWith('"'),
+    endsWithQuote: raw.endsWith('"'),
+    hasNewlines: raw.includes('\n'),
+    hasBackslashN: raw.includes('\\n')
+  });
+});
+// =========================================================================
+
 async function getAccessToken() {
   if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
     throw new Error("Variable d'environnement FIREBASE_SERVICE_ACCOUNT manquante !");
