@@ -7,31 +7,32 @@ const PROJECT_ID = "restaurant-signature-16476";
 
 // Fonction pour générer un jeton d'accès OAuth2 valide à la volée
 async function getAccessToken() {
-  if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
-    throw new Error("Variables d'environnement Firebase manquantes !");
+  // On utilise une seule variable qui contient TOUT le JSON du compte de service
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    throw new Error("Variable d'environnement FIREBASE_SERVICE_ACCOUNT manquante !");
   }
 
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY.trim();
+  let credentialsStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
 
-  // 1. On vire les guillemets parasites de Vercel
-  if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
-  if (privateKey.startsWith("'") && privateKey.endsWith("'")) privateKey = privateKey.slice(1, -1);
+  // Nettoyage des guillemets parasites de Vercel
+  if (credentialsStr.startsWith('"') && credentialsStr.endsWith('"')) credentialsStr = credentialsStr.slice(1, -1);
+  if (credentialsStr.startsWith("'") && credentialsStr.endsWith("'")) credentialsStr = credentialsStr.slice(1, -1);
+
+  let credentials;
   
-  privateKey = privateKey.trim();
-
-  // 2. Décoder le Base64 si ce n'est pas du texte brut
-  if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
-    privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+  // Si ça ne commence pas par '{', c'est que c'est du Base64 (notre cas ici)
+  if (!credentialsStr.startsWith('{')) {
+    const decodedSign = Buffer.from(credentialsStr, 'base64').toString('utf8');
+    credentials = JSON.parse(decodedSign);
+  } else {
+    credentials = JSON.parse(credentialsStr);
   }
 
-  // 3. CRUCIAL : Remplacer les \n textuels par de vrais sauts de ligne cryptographiques
-  privateKey = privateKey.replace(/\\n/g, '\n');
-
-  // Configuration de l'authentification Google OAuth2
+  // GoogleAuth reconstruit tout proprement en interne sans se soucier du formatage d'OpenSSL
   const auth = new GoogleAuth({
     credentials: {
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-      private_key: privateKey,
+      client_email: credentials.client_email,
+      private_key: credentials.private_key, // Plus besoin de .replace !
     },
     scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
   });
