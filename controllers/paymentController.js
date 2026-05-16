@@ -1,7 +1,7 @@
 // controllers/paymentController.js
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { Order } = require('../routes/orderRoutes'); // ← Import depuis orderRoutes
-const fetch = require('node-fetch');
+import fetch from 'node-fetch'
 
 // ==================== CREATE CHECKOUT SESSION ====================
 exports.createCheckoutSession = async (req, res) => {
