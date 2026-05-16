@@ -1,16 +1,42 @@
 const express = require('express');
 const router = express.Router();
-
-const crypto = require('crypto');
+const { GoogleAuth } = require('google-auth-library');
 
 const PROJECT_ID = "restaurant-signature-16476";
 
-// ========== CREDENTIALS FIREBASE EN DUR ==========
+// ========== CREDENTIALS FIREBASE ==========
 const FIREBASE_CREDENTIALS = {
   "type": "service_account",
   "project_id": "restaurant-signature-16476",
-  "private_key_id": "226712130c7b87b26ef07629f8bff183e63fc92f",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCz3uLdJis28L/K\nlzPrj5K+iU2wqSM6QSgUzf4i7twtRPYaTVqqxIH7MLFHg7vx0B1WdS3Vsa7J8y+d\nBpOzoqZpoDnnJEwmDbhdPFpOpXt7WCOhSMoUhX699Hj2LqOTpK/y6LpTJ1NzIUPh\nydADQ2ymdyWhhqfQcqpas1IRXVTiYufdLs0lFQlXsGe4iMuJLovrJsz3ZqITMwSv\nIHpVefzjga36Qfp2nm4L7Y4ddZL80lAdMc6hBPINz6xI2pm+cKiGJ0e20kbEEkVm\naTqZFWsfTP/jFIEmZMmWNYLrHW3r9WogE69hKwppaT0FG91xyzN6BfDNN2whrDXO\nPIliSP59AgMBAAECggEACQeDa1pn3FpJwafe4KoOHq5LoTaRNAxV49sS/fojdGRP\nV5lFfjTe8r1wtzUH1McMcGAk6ZYBvu9Y/XCslN2krY29CmGzyH9ABfIqW5aKdD7D\nvx9yNLiE2PblfmcJKbeGztKPALvRjRu0Fo9Bqw0R7oNYEMIIbGB6Aiz/tCtAWelL\nTeGrn2RvlYqL4/wtp0YxSQ0Te0xTjjeVg4BKVB2T/iUri+Fx3ihLQU7WJtpQM6Xy\niG/1sosBaSDXhqaDe1zmk2LUZVOj4g3V2QZQfeeNnq///8htuMS2ChtCiq1exkjD\nqoIhZFwz3U44ry5rq2Ruv6lwRxcpDxOpzx5B2tM8kwKBgQDrpr6ecL6XnrMTokcd\nateoLMUL2t9JZJdhwpvhcI0PAKxF0o9HFrZMIyX53NDBu/1oUc9lO9R0e9k3RMyp\nbDFTm8w/RY8HgYfHPkBPK4hb7MbiC9/RSwJKqxPjIfwxfUy6CuHX9thD2SiYKNaL\n+EZ2++VmgOoSnxRZ7d4L+qxUEwKBgQDDZxDsHTvrVvsFz7x5rPYBtNhJJdGtiOVw\nxiPLXyW1m/auROz2xuGCb/NoM/CEr/YwG65g88aA988sIsuvexPkmZGa9DCIN/zt\nAYM6rBIseb7UEQzuc2JG/AZYvRlPggwRXi04I4VYUOu99Ihj0H2u5ChffYg0SfFk\nhuK+l0AVLwKBgD8M802zPtuUg7eKINr3HlKKAALnAf1CI9rtVgXgtm1AMdfQubM8\nmXQPp3aOJXDgmrHRydr9QiAUjw7hopzmLOCA/Aol01ofxzOBLXXBYQ+vb5tFsBHw\nruFJmt2X10FqlB/nD3xYOI8WyGzF6Hm06S2mwj9F2Ns4oxpYsaOk43zvAoGAWYMv\nZ1qFBmwUFjdxubOYBnQX2HpwsTRTFvRNlW6C0c0elfqRKwM0bxJlyMhyV/ZbqvIj\nUdqahp3+09Mkx8Bz/nazEu7mBKDRRqk4unn04VbsKi2dZOaKkMYHCkOmApwqdxJT\nWLI89ZYsSBprGH579NAkBop1CK8O2+RGntSe0JUCgYBV+DpJSd1iFzsSy8XuCExn\njiVTNHip20MypunlSKM83kMy7FQ3nnVy+7bJUbXjbhxi18f2WxlfA6bfxaOtTXhh\nR3gr9WtxxNZiePdYqUyoUxpblSSeIX5ZLeeJ5gMx0onBke24OJFmPVeO3R01LtTu\nmOLCO7UYO52nA2X6KqXWUg==\n-----END PRIVATE KEY-----\n",
+  "private_key_id": "659a51a74c4233f3dd4f341e9e91c57299db0251",
+  "private_key": `-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCzyZVhSl0ZgJpn
+5tyjiQJaQE2k1d5bfeihq+DdBXRD23DALJk0yS95Qj+H6XbL/XaRHdnZc6thTGBy
+9tfsXpOKWrhyCsLmGhUNDzbU+AuA5tuRIl+YcdNg7EXrmlVo6/PuqF/mNUyHix4C
+TE0/h77qkLHrc4SikH4iHRP+ILrjSecf21qIRDo4d/7rZDo+JR488Ov9BetXFweL
+eG053SeHdHuA0yq+kqCZk9Iu+P/86+I4x9GxMq71NrcegkZ2qYms+Nwbu0Uc5uBT
++dZbVovitZcOOoDx0hCh8wZ53ov7fZ4kSW6I0ja7O0vNzv4v+lIQXpX/muh3bgoP
+ORQadsP7AgMBAAECggEAOjxvVzrbylF2cnZ8/Ln6GZrfq6edJZy0uH2w0lcccIiJ
+zq4DmG4coxYa9x7gHLaG6/2z3bSSjGtNiJ+9lHKULwow2bvzos5LCFZnx/dq3n+p
+Gqt8NKiWNDyEb4sn5Fsdwi4nFi4oknU1LMBje1Mwu9FP2HksOu479TffDH+0mb+A
+QBohK6FaopNnpetvrhaDqvsYb2Ia5uORKnX8FQlaLV5BvWN88PFL/wZUT6j6V6T1
+vEcBL6aLYiL+kXX6Q7orP2rb9z5hf9Hc1w/2eyPqAugnxRB4r2h+Xi95A5OAYhVl
+zyi/Dmmh/cvkhbnJ0xE1rZB/MiPY/2t6wiTSj/pi3QKBgQDvKwNBjq72Xx+ujb6w
+2ZLoHN5wMrhCvpKaGppTL8meBcQKUeCfSAGjcuU9TLciVezoZiVUMzyF3c+qns2o
+LlRRye241LIj0MfSBYoUa9wuW2ckJK6Z7SWdlVvefqKnpHGnaa18ttKTpuKW0y+9
+ApiKDfgQ+oF9ZQwMxasVePy9PwKBgQDAcLyDxk6KUXFSd1sfsv17QtX7txMKhed5
+vz0ohz8GujAKM5sIZFLolhA6NdrIgs78zG7xfoUAhZn9nkZ0SKEPLghgrQv6qcBG
+MijzeszFPYaf83NEs7rPBFgGByeDJbuoDDB7YNzDR09yl2H4BYHyR6FtC2GzJZNK
+okklVl2+RQKBgFkS0+uekFsBonMIJ3UGE0iPN+jheu6gu0jZj5Bbw+MukoylYdrw
+nmuZZvclky8egVUsdcqeKnRQ3/7TlhSE7LJpWjf0P0RHhaQanApvAVnigM9dOgnp
+4JCIB+cdksaM4CdRnGNOU67aAJnbnXPve5AvE6x/H6rr70jydX1Ryg9RAoGANhZ5
+pb/zC0VgyIDrh7lTLXXXluwZ2fdQ3BM4KU/6EvX50qQ2iuFHvD+RSAsi9wBtFPiQ
+piedUkw6v+Hgg4Z2XkHd8O4yU72qYRBwGh8FttpYIFTYrRKnCtB5vRf9rwrH96+V
+YNgUtH4ygk6yJnfF0kb3xCJSz3tcLrn2PRxNNNECgYAgIKkmIhAdBs8vCGbp5i6h
+7MPaadCO+FYHtBFnYsEk5VYu7cckb9qYjaWWDNU6bHbRdsS+BbEc3i2pkh4Mw6ob
+/36ozFifSE7b5wUCbEnKVbzDnF9nj7hU6wQ1i6fqbImsg2J3nuekYOn58A8t5GAN
+Z0+oTZtR74GI9wLoIn7Q+g==
+-----END PRIVATE KEY-----`,
   "client_email": "firebase-adminsdk-fbsvc@restaurant-signature-16476.iam.gserviceaccount.com",
   "client_id": "109227702051559712469",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -21,99 +47,16 @@ const FIREBASE_CREDENTIALS = {
 };
 // ================================================
 
-// ========== ROUTE DE DIAGNOSTIC - À SUPPRIMER APRÈS RÉSOLUTION ==========
-router.get('/debug-env', (req, res) => {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT || 'MANQUANTE';
-  const first50 = raw.substring(0, 50);
-  const last50 = raw.substring(raw.length - 50);
-  const length = raw.length;
-  
-  // Tente JSON
-  let jsonOk = false;
-  let base64Ok = false;
-  
-  try { JSON.parse(raw); jsonOk = true; } catch(e) {}
-  try { JSON.parse(Buffer.from(raw, 'base64').toString('utf8')); base64Ok = true; } catch(e) {}
-  
-  res.json({ 
-    exists: raw !== 'MANQUANTE',
-    length, 
-    first50, 
-    last50, 
-    jsonOk, 
-    base64Ok,
-    startsWithQuote: raw.startsWith('"'),
-    endsWithQuote: raw.endsWith('"'),
-    hasNewlines: raw.includes('\n'),
-    hasBackslashN: raw.includes('\\n')
-  });
-});
-// =========================================================================
-
+// Version simplifiée avec google-auth-library
 async function getAccessToken() {
-  // Utilisation directe des credentials en dur
-  const credentials = FIREBASE_CREDENTIALS;
-
-  // === DEBUG TEMPORAIRE - À SUPPRIMER APRÈS ===
-  console.log('=== DEBUG CLÉ ===');
-  console.log('Début clé:', JSON.stringify(credentials.private_key.substring(0, 60)));
-  console.log('Fin clé:', JSON.stringify(credentials.private_key.substring(credentials.private_key.length - 60)));
-  console.log('Contient \\n littéral:', credentials.private_key.includes('\\n'));
-  console.log('Contient vrai newline:', credentials.private_key.includes('\n'));
-  console.log('=================');
-  // ============================================
-
-  // Nettoyage AGRESSIF de la clé privée
-  let privateKey = credentials.private_key;
-
-  // Étape 1 : remplacer tous les \n littéraux (y compris \\n, \\\\n, etc.)
-  privateKey = privateKey.replace(/\\+n/g, '\n');
-
-  // Étape 2 : si la clé est sur une seule ligne (sans vrais sauts), la reformater
-  if (!privateKey.includes('\n')) {
-    privateKey = privateKey
-      .replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
-      .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----')
-      .replace(/(.{64})/g, '$1\n');
-  }
-
-  // Étape 3 : construire manuellement le JWT et appeler token_uri directement
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-  const payload = Buffer.from(JSON.stringify({
-    iss: credentials.client_email,
-    scope: 'https://www.googleapis.com/auth/firebase.messaging',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-  })).toString('base64url');
-
-  const signingInput = `${header}.${payload}`;
-
-  const sign = crypto.createSign('RSA-SHA256');
-  sign.update(signingInput);
-  const signature = sign.sign(privateKey, 'base64url');
-
-  const jwt = `${signingInput}.${signature}`;
-
-  // Échange du JWT contre un access token
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    }),
+  const auth = new GoogleAuth({
+    credentials: FIREBASE_CREDENTIALS,
+    scopes: ['https://www.googleapis.com/auth/firebase.messaging']
   });
-
-  const tokenData = await tokenRes.json();
-
-  if (!tokenData.access_token) {
-    console.error('❌ Réponse Google:', JSON.stringify(tokenData));
-    throw new Error(`Échec token Google: ${tokenData.error_description || tokenData.error}`);
-  }
-
-  return tokenData.access_token;
+  
+  const client = await auth.getClient();
+  const token = await client.getAccessToken();
+  return token.token;
 }
 
 let adminTokens = [];
@@ -137,12 +80,12 @@ router.post('/test-token', async (req, res) => {
   }
   
   try {
-    const oauth2Token = await getAccessToken();
+    const accessToken = await getAccessToken();
     
     const response = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${oauth2Token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -189,14 +132,14 @@ router.post('/new-order', async (req, res) => {
   let errors = [];
   
   try {
-    const oauth2Token = await getAccessToken();
+    const accessToken = await getAccessToken();
 
     const notificationPromises = adminTokens.map(async (token) => {
       try {
         const response = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${oauth2Token}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -239,7 +182,7 @@ router.post('/new-order', async (req, res) => {
     res.json({ success: true, successCount, errors });
 
   } catch (authError) {
-    console.error('💥 Erreur Auth OAuth2:', authError);
+    console.error('💥 Erreur Auth:', authError);
     res.status(500).json({ success: false, error: "Échec de génération du token Google" });
   }
 });
