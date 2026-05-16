@@ -1,38 +1,43 @@
-// routes/notificationRoutes.js
 const express = require('express');
 const router = express.Router();
 const { GoogleAuth } = require('google-auth-library');
 
 const PROJECT_ID = "restaurant-signature-16476";
 
-// Fonction pour générer un jeton d'accès OAuth2 valide à la volée
+// Fonction robuste pour générer un jeton d'accès OAuth2 valide à la volée
 async function getAccessToken() {
-  // On utilise une seule variable qui contient TOUT le JSON du compte de service
   if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
     throw new Error("Variable d'environnement FIREBASE_SERVICE_ACCOUNT manquante !");
   }
 
   let credentialsStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
 
-  // Nettoyage des guillemets parasites de Vercel
+  // 1. Nettoyage radical de tous les types de guillemets parasites de Vercel
   if (credentialsStr.startsWith('"') && credentialsStr.endsWith('"')) credentialsStr = credentialsStr.slice(1, -1);
   if (credentialsStr.startsWith("'") && credentialsStr.endsWith("'")) credentialsStr = credentialsStr.slice(1, -1);
+  credentialsStr = credentialsStr.trim();
 
   let credentials;
   
-  // Si ça ne commence pas par '{', c'est que c'est du Base64 (notre cas ici)
-  if (!credentialsStr.startsWith('{')) {
-    const decodedSign = Buffer.from(credentialsStr, 'base64').toString('utf8');
-    credentials = JSON.parse(decodedSign);
-  } else {
+  // 2. Stratégie de parsing adaptative (JSON brut vs Base64)
+  try {
+    // On tente d'abord de lire directement si c'est du JSON brut
     credentials = JSON.parse(credentialsStr);
+  } catch (jsonError) {
+    try {
+      // Si le JSON direct échoue, c'est obligatoirement le Base64. On décode et on parse.
+      const decodedSign = Buffer.from(credentialsStr, 'base64').toString('utf8');
+      credentials = JSON.parse(decodedSign);
+    } catch (base64Error) {
+      throw new Error("Échec critique : Le contenu n'est ni du JSON valide, ni du Base64 correct.");
+    }
   }
 
-  // GoogleAuth reconstruit tout proprement en interne sans se soucier du formatage d'OpenSSL
+  // GoogleAuth gère parfaitement l'objet d'identification
   const auth = new GoogleAuth({
     credentials: {
       client_email: credentials.client_email,
-      private_key: credentials.private_key, // Plus besoin de .replace !
+      private_key: credentials.private_key, 
     },
     scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
   });
@@ -117,7 +122,8 @@ router.post('/new-order', async (req, res) => {
   try {
     const oauth2Token = await getAccessToken();
 
-    for (const token of adminTokens) {
+    // Envoi en parallèle via Promise.allSettled pour éviter les goulots d'étranglement
+    const notificationPromises = adminTokens.map(async (token) => {
       try {
         const response = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
           method: 'POST',
@@ -142,14 +148,24 @@ router.post('/new-order', async (req, res) => {
         
         const data = await response.json();
         if (response.ok) {
-          successCount++;
+          return { success: true };
         } else {
-          errors.push(data.error?.message);
+          return { success: false, error: data.error?.message };
         }
       } catch (error) {
-        errors.push(error.message);
+        return { success: false, error: error.message };
       }
-    }
+    });
+
+    const results = await Promise.allSettled(notificationPromises);
+
+    results.forEach(result => {
+      if (result.status === 'fulfilled' && result.value.success) {
+        successCount++;
+      } else {
+        errors.push(result.value?.error || "Erreur réseau");
+      }
+    });
     
     console.log(`✅ Notification: ${successCount} succès`);
     res.json({ success: true, successCount, errors });
