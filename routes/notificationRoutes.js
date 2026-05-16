@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { GoogleAuth } = require('google-auth-library');
+
 const crypto = require('crypto');
 
 const PROJECT_ID = "restaurant-signature-16476";
