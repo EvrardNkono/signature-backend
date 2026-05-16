@@ -19,6 +19,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "firebase-admin": "^13.10.0",
+    "google-auth-library": "^10.6.2",
     "mongoose": "^9.1.5",
     "stripe": "^22.0.1"
   },
