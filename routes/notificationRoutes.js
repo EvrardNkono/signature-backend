@@ -3,26 +3,42 @@ const express = require('express');
 const router = express.Router();
 const admin = require('firebase-admin');
 
-// Initialisation sécurisée du SDK Firebase Admin (évite les doubles initialisations)
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Gestion des sauts de ligne (\n) pour la clé privée sous Vercel / Windows
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      }),
-    });
-    console.log("✅ Firebase Admin SDK initialisé avec succès.");
-  } catch (error) {
-    console.error("❌ Erreur d'initialisation de Firebase Admin:", error);
+// Fonction d'initialisation dynamique indispensable pour l'environnement Serverless (Vercel)
+function getFirebaseAdminMessaging() {
+  if (admin.apps.length === 0) {
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
+      throw new Error("Variables d'environnement Firebase manquantes dans le .env !");
+    }
+
+    // Nettoyage de la clé privée (gestion des guillemets doubles ajoutés par Vercel)
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
+    }
+    
+    // Remplacement des anti-slash n textuels par des vrais sauts de ligne
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: privateKey,
+        }),
+      });
+      console.log("🚀 Firebase Admin initialisé dynamiquement avec succès !");
+    } catch (error) {
+      console.error("❌ Échec de l'initialisation dynamique de Firebase Admin:", error);
+      throw error;
+    }
   }
+  return admin.messaging();
 }
 
 let adminTokens = [];
 
-// Fonction modifiée pour utiliser le SDK officiel
+// Fonction d'envoi utilisant l'instance dynamique
 async function sendNotification(token, title, body) {
   const message = {
     token: token,
@@ -33,14 +49,16 @@ async function sendNotification(token, title, body) {
   };
 
   try {
-    // Le SDK gère l'authentification OAuth2 en arrière-plan
-    const response = await admin.messaging().send(message);
+    const messaging = getFirebaseAdminMessaging();
+    const response = await messaging.send(message);
     return { success: true, messageId: response };
   } catch (error) {
-    console.error("Erreur FCM d'envoi:", error);
+    console.error("❌ Erreur FCM d'envoi:", error);
     return { success: false, error: error.message };
   }
 }
+
+// --- Les Routes ---
 
 router.post('/register-admin', (req, res) => {
   const { token } = req.body;
