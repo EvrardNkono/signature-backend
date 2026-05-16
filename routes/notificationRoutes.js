@@ -3,37 +3,27 @@ const express = require('express');
 const router = express.Router();
 const admin = require('firebase-admin');
 
-// Fonction d'initialisation dynamique renforcée pour contrer les caprices d'encodage de Vercel
+// Fonction d'initialisation dynamique utilisant le décodage Base64 pour Vercel
 function getFirebaseAdminMessaging() {
   if (admin.apps.length === 0) {
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
       throw new Error("Variables d'environnement Firebase manquantes dans le .env !");
     }
 
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY.trim();
-
-    // 1. Nettoyage des guillemets doubles ou simples que Vercel encapsule parfois autour de la chaîne
-    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-      privateKey = privateKey.slice(1, -1);
-    }
-    if (privateKey.startsWith("'") && privateKey.endsWith("'")) {
-      privateKey = privateKey.slice(1, -1);
-    }
-    
-    // 2. Remplacement agressif des séquences d'échappement (\\\\n ou \\n) par de réels sauts de ligne
-    privateKey = privateKey.replace(/\\n/g, '\n');
-
     try {
+      // Décodage natif Node.js du Base64 pour reconstruire la clé originale à la volée en mémoire
+      const privateKeyDecoded = Buffer.from(process.env.FIREBASE_PRIVATE_KEY.trim(), 'base64').toString('utf8');
+
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId: process.env.FIREBASE_PROJECT_ID,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: privateKey,
+          privateKey: privateKeyDecoded,
         }),
       });
-      console.log("🚀 Firebase Admin initialisé avec nettoyage agressif de la clé !");
+      console.log("🚀 Firebase Admin initialisé avec succès grâce au décodage Base64 !");
     } catch (error) {
-      console.error("❌ Échec de l'initialisation dynamique de Firebase Admin:", error);
+      console.error("❌ Échec de l'initialisation Firebase via Base64:", error);
       throw error;
     }
   }
@@ -42,7 +32,7 @@ function getFirebaseAdminMessaging() {
 
 let adminTokens = [];
 
-// Fonction d'envoi utilisant l'instance dynamique renforcée
+// Fonction d'envoi utilisant l'instance dynamique décodée
 async function sendNotification(token, title, body) {
   const message = {
     token: token,
