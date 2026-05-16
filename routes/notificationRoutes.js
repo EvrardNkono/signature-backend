@@ -12,20 +12,19 @@ async function getAccessToken() {
 
   let credentialsStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
 
-  // 1. Nettoyage radical de tous les types de guillemets parasites de Vercel
-  if (credentialsStr.startsWith('"') && credentialsStr.endsWith('"')) credentialsStr = credentialsStr.slice(1, -1);
-  if (credentialsStr.startsWith("'") && credentialsStr.endsWith("'")) credentialsStr = credentialsStr.slice(1, -1);
+  // Nettoyage des guillemets parasites
+  if (credentialsStr.startsWith('"') && credentialsStr.endsWith('"'))
+    credentialsStr = credentialsStr.slice(1, -1);
+  if (credentialsStr.startsWith("'") && credentialsStr.endsWith("'"))
+    credentialsStr = credentialsStr.slice(1, -1);
   credentialsStr = credentialsStr.trim();
 
   let credentials;
-  
-  // 2. Stratégie de parsing adaptative (JSON brut vs Base64)
+
   try {
-    // On tente d'abord de lire directement si c'est du JSON brut
     credentials = JSON.parse(credentialsStr);
   } catch (jsonError) {
     try {
-      // Si le JSON direct échoue, c'est obligatoirement le Base64. On décode et on parse.
       const decodedSign = Buffer.from(credentialsStr, 'base64').toString('utf8');
       credentials = JSON.parse(decodedSign);
     } catch (base64Error) {
@@ -33,11 +32,15 @@ async function getAccessToken() {
     }
   }
 
-  // GoogleAuth gère parfaitement l'objet d'identification
+  // ✅ FIX CRITIQUE : restaurer les vrais sauts de ligne dans la clé privée
+  if (credentials.private_key) {
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+  }
+
   const auth = new GoogleAuth({
     credentials: {
       client_email: credentials.client_email,
-      private_key: credentials.private_key, 
+      private_key: credentials.private_key,
     },
     scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
   });
