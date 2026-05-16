@@ -13,16 +13,22 @@ async function getAccessToken() {
 
   let privateKey = process.env.FIREBASE_PRIVATE_KEY.trim();
 
-  // Nettoyage de la clé (gestion automatique Texte brut vs Base64)
+  // 1. On vire d'abord les guillemets parasites ajoutés par Vercel
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
+  if (privateKey.startsWith("'") && privateKey.endsWith("'")) privateKey = privateKey.slice(1, -1);
+  
+  privateKey = privateKey.trim();
+
+  // 2. Maintenant on check sereinement si c'est du Base64 ou du texte brut
   if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
+    // C'est du Base64 pur
     privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
   } else {
-    if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
-    if (privateKey.startsWith("'") && privateKey.endsWith("'")) privateKey = privateKey.slice(1, -1);
+    // C'est du texte brut, on remplace les sauts de ligne textuels
     privateKey = privateKey.replace(/\\n/g, '\n');
   }
 
-  // Configuration de l'authentification Google OAuth2 sans le gros SDK Firebase
+  // Configuration de l'authentification Google OAuth2
   const auth = new GoogleAuth({
     credentials: {
       client_email: process.env.FIREBASE_CLIENT_EMAIL,
@@ -33,7 +39,7 @@ async function getAccessToken() {
 
   const client = await auth.getClient();
   const tokenResponse = await client.getAccessToken();
-  return tokenResponse.token; // C'est CE Bearer token dont Google a besoin
+  return tokenResponse.token;
 }
 
 let adminTokens = [];
@@ -57,7 +63,6 @@ router.post('/test-token', async (req, res) => {
   }
   
   try {
-    // Récupération du vrai Token OAuth2
     const oauth2Token = await getAccessToken();
     
     const response = await fetch(`https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`, {
@@ -110,7 +115,6 @@ router.post('/new-order', async (req, res) => {
   let errors = [];
   
   try {
-    // On génère le token d'accès une seule fois pour toute la boucle
     const oauth2Token = await getAccessToken();
 
     for (const token of adminTokens) {
