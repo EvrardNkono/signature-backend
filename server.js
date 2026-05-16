@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const mongoose = require('mongoose');  // ← IMPORTANT
+
+console.log('🚀 Serveur démarré sur Vercel');
+console.log('MONGODB_URI existe ?', !!process.env.MONGODB_URI);
 
 // 1. Chargement des variables d'environnement (.env)
 dotenv.config();
@@ -11,10 +15,9 @@ connectDB();
 
 const app = express();
 
-// --- CONFIGURATION STRIPE WEBHOOK (Doit être avant express.json) ---
-app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-    res.status(200).send({ received: true });
-});
+// ========== WEBHOOK STRIPE ==========
+const paymentController = require('./controllers/paymentController');
+app.post('/api/webhook', express.raw({ type: 'application/json' }), paymentController.handleWebhook);
 
 // 3. Middlewares
 app.use(cors({
@@ -40,7 +43,6 @@ app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
 // 4. Importation des Routes
 const menuRoutes = require('./routes/menuRoutes');
-
 const bannerRoutes = require('./routes/bannerRoutes'); 
 const uberRoutes = require('./routes/uberRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -50,11 +52,11 @@ const tableRoutes = require('./routes/tableRoutes');
 const orderRoutes = require('./routes/orderRoutes'); 
 const chatRoutes = require('./routes/chatRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
-const popupRoutes = require('./routes/popupRoutes'); // ← AJOUT ICI
+const popupRoutes = require('./routes/popupRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // 5. Utilisation des Routes
 app.use('/api/menu', menuRoutes);
-
 app.use('/api/banner', bannerRoutes); 
 app.use('/api/uber', uberRoutes); 
 app.use('/api/categories', categoryRoutes);
@@ -64,11 +66,31 @@ app.use('/api/tables', tableRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/popups', popupRoutes); // ← AJOUT ICI
+app.use('/api/popups', popupRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Route de test
 app.get('/', (req, res) => {
   res.send('✦ API Signature lancée et opérationnelle... ✦');
+});
+
+// Routes de diagnostic
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    env: {
+      mongodb: !!process.env.MONGODB_URI,
+      frontend: !!process.env.FRONTEND_URL,
+      node: process.version,
+      environment: process.env.NODE_ENV
+    },
+    mongodb_status: mongoose.connection && mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
+app.get('/api/ping', (req, res) => {
+  res.json({ pong: true, time: Date.now() });
 });
 
 // 6. Gestion du Port & Exportation
@@ -80,7 +102,8 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Serveur] Lancé sur le port ${PORT}`);
     console.log(`[Mode] ${process.env.NODE_ENV}`);
     console.log(`[Status] Routes & Paiements Stripe OK`);
-    console.log(`[Popup] Routes disponibles sur /api/popups`); // ← NOUVEAU
+    console.log(`[Popup] Routes disponibles sur /api/popups`);
+    console.log(`[Notifications] Routes disponibles sur /api/notifications`);
     console.log(`-----------------------------------------`);
   });
 }
