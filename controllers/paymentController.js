@@ -1,14 +1,17 @@
 // controllers/paymentController.js
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { Order } = require('../routes/orderRoutes'); // ← Import depuis orderRoutes
-import fetch from 'node-fetch'
+const { Order } = require('../routes/orderRoutes');
+
+// ✅ Au lieu de import, utilise require (CommonJS) ou supprime-le
+// const fetch = require('node-fetch'); ← SUPPRIME complètement
+
+// ⚠️ Node.js 18+ a fetch natif, pas besoin d'importer quoi que ce soit
 
 // ==================== CREATE CHECKOUT SESSION ====================
 exports.createCheckoutSession = async (req, res) => {
     try {
         const { items, orderId } = req.body;
 
-        // --- INTELLIGENCE AUTO-DÉTECTION ---
         const frontendUrl = process.env.NODE_ENV === 'production'
             ? process.env.FRONTEND_URL || "https://restaurantsignature.fr"
             : "http://localhost:5173";
@@ -70,7 +73,6 @@ exports.handleWebhook = async (req, res) => {
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // Gérer le paiement réussi
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
         const orderId = session.metadata.orderId;
@@ -78,7 +80,6 @@ exports.handleWebhook = async (req, res) => {
         console.log(`✅ Paiement réussi pour la commande ${orderId}`);
         
         try {
-            // 1. Mettre à jour la commande
             const order = await Order.findByIdAndUpdate(orderId, { 
                 status: "pending",
                 "details.paymentStatus": "paid"
@@ -89,13 +90,11 @@ exports.handleWebhook = async (req, res) => {
                 return res.json({ received: true });
             }
             
-            console.log(`📦 Commande ${orderId} mise à jour: status=pending, paymentStatus=paid`);
+            console.log(`📦 Commande ${orderId} mise à jour`);
             
-            // 2. 🔔 ENVOYER LA NOTIFICATION À L'ADMIN
             const isLocal = process.env.NODE_ENV !== 'production';
             const BASE_API = isLocal ? "http://localhost:5000/api" : "https://signature-backend-alpha.vercel.app/api";
             
-            // Déterminer le mode d'affichage
             let modeText = "Sur place";
             if (order.mode === "delivery") modeText = "Livraison";
             else if (order.mode === "booking") modeText = "Réservation";
@@ -110,9 +109,9 @@ exports.handleWebhook = async (req, res) => {
                 paymentMethod: "Stripe (carte)"
             };
             
-            console.log(`📨 Envoi notification admin:`, notificationData);
+            console.log(`📨 Envoi notification admin`);
             
-            // Appel vers la route de notification
+            // ✅ fetch natif (Node.js 18+)
             const response = await fetch(`${BASE_API}/notifications/new-order`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -120,7 +119,7 @@ exports.handleWebhook = async (req, res) => {
             });
             
             if (response.ok) {
-                console.log(`✅ Notification admin envoyée pour commande ${orderId}`);
+                console.log(`✅ Notification admin envoyée`);
             } else {
                 console.log(`⚠️ Échec envoi notification: ${response.status}`);
             }
