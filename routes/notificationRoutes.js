@@ -4,15 +4,35 @@ const router = express.Router();
 const admin = require('firebase-admin');
 
 // Fonction d'initialisation dynamique utilisant le décodage Base64 pour Vercel
+// routes/notificationRoutes.js
+
 function getFirebaseAdminMessaging() {
+  // Si l'application a été mal initialisée lors d'une exécution précédente, on la supprime pour repartir à neuf
+  if (admin.apps.length > 0) {
+    try {
+      // Optionnel : décommente la ligne suivante si le problème persiste pour forcer le clean à chaque appel Serverless éphémère
+      // admin.app().delete();
+    } catch(e) {}
+  }
+
   if (admin.apps.length === 0) {
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
       throw new Error("Variables d'environnement Firebase manquantes dans le .env !");
     }
 
     try {
-      // Décodage natif Node.js du Base64 pour reconstruire la clé originale à la volée en mémoire
-      const privateKeyDecoded = Buffer.from(process.env.FIREBASE_PRIVATE_KEY.trim(), 'base64').toString('utf8');
+      let rawKey = process.env.FIREBASE_PRIVATE_KEY.trim();
+      let privateKeyDecoded = '';
+
+      // DOUBLE SÉCURITÉ : On vérifie si la clé reçue est du Base64 ou du texte brut
+      if (!rawKey.includes("-----BEGIN PRIVATE KEY-----")) {
+        // C'est du Base64, on le décode
+        privateKeyDecoded = Buffer.from(rawKey, 'base64').toString('utf8');
+      } else {
+        // C'est du texte brut, on applique le nettoyage classique
+        if (rawKey.startsWith('"') && rawKey.endsWith('"')) rawKey = rawKey.slice(1, -1);
+        privateKeyDecoded = rawKey.replace(/\\n/g, '\n');
+      }
 
       admin.initializeApp({
         credential: admin.credential.cert({
@@ -21,9 +41,9 @@ function getFirebaseAdminMessaging() {
           privateKey: privateKeyDecoded,
         }),
       });
-      console.log("🚀 Firebase Admin initialisé avec succès grâce au décodage Base64 !");
+      console.log("✅ SDK Firebase Admin initialisé avec succès !");
     } catch (error) {
-      console.error("❌ Échec de l'initialisation Firebase via Base64:", error);
+      console.error("❌ Échec de l'initialisation de Firebase Admin:", error);
       throw error;
     }
   }
