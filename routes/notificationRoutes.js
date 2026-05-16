@@ -1,34 +1,51 @@
 // routes/notificationRoutes.js
 const express = require('express');
 const router = express.Router();
+const admin = require('firebase-admin');
 
-const API_KEY = process.env.FIREBASE_API_KEY;
-const PROJECT_ID = "restaurant-signature-16476";
+// Initialisation sécurisée du SDK Firebase Admin (évite les doubles initialisations)
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        // Gestion des sauts de ligne (\n) pour la clé privée sous Vercel / Windows
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
+    console.log("✅ Firebase Admin SDK initialisé avec succès.");
+  } catch (error) {
+    console.error("❌ Erreur d'initialisation de Firebase Admin:", error);
+  }
+}
 
 let adminTokens = [];
 
+// Fonction modifiée pour utiliser le SDK officiel
 async function sendNotification(token, title, body) {
-  const url = `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`;
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      message: {
-        token: token,
-        notification: { title, body }
-      }
-    })
-  });
-  
-  return response.json();
+  const message = {
+    token: token,
+    notification: {
+      title: title,
+      body: body
+    }
+  };
+
+  try {
+    // Le SDK gère l'authentification OAuth2 en arrière-plan
+    const response = await admin.messaging().send(message);
+    return { success: true, messageId: response };
+  } catch (error) {
+    console.error("Erreur FCM d'envoi:", error);
+    return { success: false, error: error.message };
+  }
 }
 
 router.post('/register-admin', (req, res) => {
   const { token } = req.body;
+  if (!token) return res.status(400).json({ success: false, error: 'Token requis' });
+  
   if (!adminTokens.includes(token)) {
     adminTokens.push(token);
     console.log(`✅ Token enregistré (${adminTokens.length})`);
@@ -45,12 +62,12 @@ router.post('/test-token', async (req, res) => {
   
   const result = await sendNotification(token, '🔔 Test', 'Notification fonctionnelle !');
   
-  if (result.name) {
+  if (result.success) {
     console.log('✅ Test réussi');
     res.json({ success: true });
   } else {
-    console.error('❌ Test échoué:', result.error?.message);
-    res.status(400).json({ success: false, error: result.error?.message });
+    console.error('❌ Test échoué:', result.error);
+    res.status(400).json({ success: false, error: result.error });
   }
 });
 
@@ -71,7 +88,7 @@ router.post('/new-order', async (req, res) => {
   let successCount = 0;
   for (const token of adminTokens) {
     const result = await sendNotification(token, '🆕 Nouvelle commande !', messageBody);
-    if (result.name) successCount++;
+    if (result.success) successCount++;
   }
   
   console.log(`✅ Notification: ${successCount} succès`);
