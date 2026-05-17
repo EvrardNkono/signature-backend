@@ -3,7 +3,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-
+const adminAuthRoutes = require('./routes/adminAuth');
 // ========== 1. CHARGER LES VARIABLES D'ENVIRONNEMENT EN PREMIER ==========
 dotenv.config();
 
@@ -73,6 +73,7 @@ app.use('/api/payments',      paymentRoutes);
 app.use('/api/popups',        popupRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/bills',         billRoutes); // ← AJOUT
+app.use('/api/admin-auth', adminAuthRoutes);
 
 // Routes de test
 app.get('/', (req, res) => {
