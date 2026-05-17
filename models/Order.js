@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const OrderSchema = new mongoose.Schema({
   clientId: { type: String, required: true },
+  fcmToken: { type: String, default: null }, // 👈 AJOUTÉ : Token FCM pour les notifications push
   customer: {
     name: { type: String, default: "Client Signature" },
     email: { type: String, default: "" },
@@ -27,7 +28,7 @@ const OrderSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ['pending', 'pending_payment', 'cooking', 'done', 'archived'],
+    enum: ['pending', 'pending_payment', 'cooking', 'done', 'archived', 'cancelled'],
     default: 'pending'
   },
   details: {
@@ -46,5 +47,10 @@ const OrderSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Index pour améliorer les performances
+OrderSchema.index({ clientId: 1, createdAt: -1 });
+OrderSchema.index({ fcmToken: 1 });
+OrderSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Order', OrderSchema);

@@ -1,3 +1,5 @@
+// server.js
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -35,7 +37,7 @@ app.use(cors({
     "https://restaurantsignature.fr",
     "https://www.restaurantsignature.fr"
   ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
   credentials: true
 }));
@@ -44,31 +46,33 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
 // ========== 5. ROUTES ==========
-const menuRoutes = require('./routes/menuRoutes');
-const bannerRoutes = require('./routes/bannerRoutes'); 
-const uberRoutes = require('./routes/uberRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
+const menuRoutes          = require('./routes/menuRoutes');
+const bannerRoutes        = require('./routes/bannerRoutes'); 
+const uberRoutes          = require('./routes/uberRoutes');
+const categoryRoutes      = require('./routes/categoryRoutes');
 const accompanimentRoutes = require('./routes/accompanimentRoutes');
-const supplementRoutes = require('./routes/supplementRoutes');
-const tableRoutes = require('./routes/tableRoutes');
-const orderRoutes = require('./routes/orderRoutes'); 
-const chatRoutes = require('./routes/chatRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-const popupRoutes = require('./routes/popupRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
+const supplementRoutes    = require('./routes/supplementRoutes');
+const tableRoutes         = require('./routes/tableRoutes');
+const orderRoutes         = require('./routes/orderRoutes'); 
+const chatRoutes          = require('./routes/chatRoutes');
+const paymentRoutes       = require('./routes/paymentRoutes');
+const popupRoutes         = require('./routes/popupRoutes');
+const notificationRoutes  = require('./routes/notificationRoutes');
+const billRoutes          = require('./routes/billRoutes'); // ← AJOUT
 
-app.use('/api/menu', menuRoutes);
-app.use('/api/banner', bannerRoutes); 
-app.use('/api/uber', uberRoutes); 
-app.use('/api/categories', categoryRoutes);
-app.use('/api/accompaniments', accompanimentRoutes);
-app.use('/api/supplements', supplementRoutes);
-app.use('/api/tables', tableRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/popups', popupRoutes);
+app.use('/api/menu',          menuRoutes);
+app.use('/api/banner',        bannerRoutes); 
+app.use('/api/uber',          uberRoutes); 
+app.use('/api/categories',    categoryRoutes);
+app.use('/api/accompaniments',accompanimentRoutes);
+app.use('/api/supplements',   supplementRoutes);
+app.use('/api/tables',        tableRoutes);
+app.use('/api/orders',        orderRoutes);
+app.use('/api/chat',          chatRoutes);
+app.use('/api/payments',      paymentRoutes);
+app.use('/api/popups',        popupRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/bills',         billRoutes); // ← AJOUT
 
 // Routes de test
 app.get('/', (req, res) => {
@@ -104,6 +108,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Status] Routes & Paiements Stripe OK`);
     console.log(`[Popup] Routes disponibles sur /api/popups`);
     console.log(`[Notifications] Routes disponibles sur /api/notifications`);
+    console.log(`[Bills] Routes disponibles sur /api/bills`);       // ← AJOUT
     console.log(`-----------------------------------------`);
   });
 }
