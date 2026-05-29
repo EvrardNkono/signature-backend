@@ -59,7 +59,7 @@ const paymentRoutes       = require('./routes/paymentRoutes');
 const popupRoutes         = require('./routes/popupRoutes');
 const notificationRoutes  = require('./routes/notificationRoutes');
 const billRoutes          = require('./routes/billRoutes');
-const settingsRoutes      = require('./routes/settings'); // ← AJOUT des routes settings
+const settingsRoutes      = require('./routes/settings');
 
 app.use('/api/menu',          menuRoutes);
 app.use('/api/banner',        bannerRoutes); 
@@ -74,8 +74,31 @@ app.use('/api/payments',      paymentRoutes);
 app.use('/api/popups',        popupRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/bills',         billRoutes);
-app.use('/api/settings',      settingsRoutes); // ← AJOUT de l'utilisation des routes settings
-app.use('/api/admin-auth', adminAuthRoutes);
+app.use('/api/settings',      settingsRoutes);
+app.use('/api/admin-auth',    adminAuthRoutes);
+
+// ========== ROUTE SIMPLE POUR EXPORT IMAGES (sans archiver) ==========
+app.get('/api/export-images', async (req, res) => {
+  try {
+    const Menu = require('./models/Menu');
+    const plats = await Menu.find({ 
+      image: { $exists: true, $ne: null, $ne: "" } 
+    }).select('name image');
+    
+    // Retourner simplement la liste des URLs
+    res.json({
+      success: true,
+      count: plats.length,
+      images: plats.map(p => ({
+        name: p.name,
+        url: p.image
+      }))
+    });
+  } catch (error) {
+    console.error("Erreur:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // Routes de test
 app.get('/', (req, res) => {
@@ -112,7 +135,8 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Popup] Routes disponibles sur /api/popups`);
     console.log(`[Notifications] Routes disponibles sur /api/notifications`);
     console.log(`[Bills] Routes disponibles sur /api/bills`);
-    console.log(`[Settings] Routes disponibles sur /api/settings`); // ← AJOUT du log
+    console.log(`[Settings] Routes disponibles sur /api/settings`);
+    console.log(`[Export] GET /api/export-images - Liste des images`);
     console.log(`-----------------------------------------`);
   });
 }
