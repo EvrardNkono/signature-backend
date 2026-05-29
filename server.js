@@ -58,7 +58,8 @@ const chatRoutes          = require('./routes/chatRoutes');
 const paymentRoutes       = require('./routes/paymentRoutes');
 const popupRoutes         = require('./routes/popupRoutes');
 const notificationRoutes  = require('./routes/notificationRoutes');
-const billRoutes          = require('./routes/billRoutes'); // ← AJOUT
+const billRoutes          = require('./routes/billRoutes');
+const settingsRoutes      = require('./routes/settings'); // ← AJOUT des routes settings
 
 app.use('/api/menu',          menuRoutes);
 app.use('/api/banner',        bannerRoutes); 
@@ -72,7 +73,8 @@ app.use('/api/chat',          chatRoutes);
 app.use('/api/payments',      paymentRoutes);
 app.use('/api/popups',        popupRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/bills',         billRoutes); // ← AJOUT
+app.use('/api/bills',         billRoutes);
+app.use('/api/settings',      settingsRoutes); // ← AJOUT de l'utilisation des routes settings
 app.use('/api/admin-auth', adminAuthRoutes);
 
 // Routes de test
@@ -109,7 +111,8 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Status] Routes & Paiements Stripe OK`);
     console.log(`[Popup] Routes disponibles sur /api/popups`);
     console.log(`[Notifications] Routes disponibles sur /api/notifications`);
-    console.log(`[Bills] Routes disponibles sur /api/bills`);       // ← AJOUT
+    console.log(`[Bills] Routes disponibles sur /api/bills`);
+    console.log(`[Settings] Routes disponibles sur /api/settings`); // ← AJOUT du log
     console.log(`-----------------------------------------`);
   });
 }
