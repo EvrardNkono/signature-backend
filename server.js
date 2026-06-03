@@ -1,5 +1,3 @@
-// server.js
-
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -63,6 +61,7 @@ const popupRoutes         = require('./routes/popupRoutes');
 const notificationRoutes  = require('./routes/notificationRoutes');
 const billRoutes          = require('./routes/billRoutes');
 const settingsRoutes      = require('./routes/settings');
+const exportRoutes        = require('./routes/exportRoutes');  // ← AJOUTÉ
 
 app.use('/api/menu',          menuRoutes);
 app.use('/api/banner',        bannerRoutes); 
@@ -79,6 +78,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/bills',         billRoutes);
 app.use('/api/settings',      settingsRoutes);
 app.use('/api/admin-auth',    adminAuthRoutes);
+app.use('/api/export',        exportRoutes);  // ← AJOUTÉ
 
 // ========== ROUTE SIMPLE POUR EXPORT IMAGES (sans archiver) ==========
 app.get('/api/export-images', async (req, res) => {
@@ -88,7 +88,6 @@ app.get('/api/export-images', async (req, res) => {
       image: { $exists: true, $ne: null, $ne: "" } 
     }).select('name image');
     
-    // Retourner simplement la liste des URLs
     res.json({
       success: true,
       count: plats.length,
@@ -132,8 +131,6 @@ app.get('/api/export/images-list', async (req, res) => {
 app.get('/api/public/check-token', async (req, res) => {
   try {
     const { token } = req.query;
-    
-    // Comparaison avec le token en dur
     const isValid = (token === EXPORT_PUBLIC_TOKEN);
     
     res.json({ 
@@ -151,7 +148,6 @@ app.get('/api/public/export-complete', async (req, res) => {
   try {
     const { token } = req.query;
     
-    // Vérification du token en dur
     if (!token || token !== EXPORT_PUBLIC_TOKEN) {
       return res.status(401).json({ 
         success: false, 
@@ -159,7 +155,6 @@ app.get('/api/public/export-complete', async (req, res) => {
       });
     }
     
-    // Appeler le contrôleur d'export
     const exportController = require('./controllers/exportController');
     await exportController.exportComplete(req, res);
     
@@ -204,11 +199,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Serveur] Lancé sur le port ${PORT}`);
     console.log(`[Mode] ${process.env.NODE_ENV}`);
     console.log(`[Status] Routes & Paiements Stripe OK`);
-    console.log(`[Popup] Routes disponibles sur /api/popups`);
-    console.log(`[Notifications] Routes disponibles sur /api/notifications`);
-    console.log(`[Bills] Routes disponibles sur /api/bills`);
-    console.log(`[Settings] Routes disponibles sur /api/settings`);
-    console.log(`[Export] GET /api/export-images - Liste des images`);
+    console.log(`[Export Routes] Disponibles sur /api/export/*`);
     console.log(`[Export Public] GET /api/public/export-complete?token=${EXPORT_PUBLIC_TOKEN}`);
     console.log(`-----------------------------------------`);
   });
