@@ -19,6 +19,9 @@ connectDB();
 
 const app = express();
 
+// ========== TOKEN EXPORT PUBLIC (EN DUR) ==========
+const EXPORT_PUBLIC_TOKEN = "SignatureExport2024!";
+
 // ========== WEBHOOK STRIPE ==========
 const paymentController = require('./controllers/paymentController');
 app.post('/api/webhook', express.raw({ type: 'application/json' }), paymentController.handleWebhook);
@@ -100,7 +103,76 @@ app.get('/api/export-images', async (req, res) => {
   }
 });
 
-// Routes de test
+// ========== ROUTE POUR LA LISTE DES IMAGES (admin) ==========
+app.get('/api/export/images-list', async (req, res) => {
+  try {
+    const Menu = require('./models/Menu');
+    const plats = await Menu.find({ 
+      image: { $exists: true, $ne: null, $ne: "" } 
+    }).select('name image category');
+    
+    res.json({
+      success: true,
+      count: plats.length,
+      images: plats.map(p => ({
+        name: p.name,
+        url: p.image,
+        category: p.category
+      }))
+    });
+  } catch (error) {
+    console.error("Erreur:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== EXPORT PUBLIC (SANS AUTH) ====================
+
+// Route pour vérifier le token
+app.get('/api/public/check-token', async (req, res) => {
+  try {
+    const { token } = req.query;
+    
+    // Comparaison avec le token en dur
+    const isValid = (token === EXPORT_PUBLIC_TOKEN);
+    
+    res.json({ 
+      valid: isValid,
+      message: isValid ? "Token valide" : "Token invalide"
+    });
+  } catch (error) {
+    console.error("❌ Erreur check-token:", error);
+    res.status(500).json({ valid: false, error: error.message });
+  }
+});
+
+// Route pour télécharger l'export complet (images + CSV)
+app.get('/api/public/export-complete', async (req, res) => {
+  try {
+    const { token } = req.query;
+    
+    // Vérification du token en dur
+    if (!token || token !== EXPORT_PUBLIC_TOKEN) {
+      return res.status(401).json({ 
+        success: false, 
+        error: "Token invalide. Veuillez utiliser le lien fourni par l'administrateur." 
+      });
+    }
+    
+    // Appeler le contrôleur d'export
+    const exportController = require('./controllers/exportController');
+    await exportController.exportComplete(req, res);
+    
+  } catch (error) {
+    console.error("❌ Erreur export public:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Erreur lors de la génération de l'export" 
+    });
+  }
+});
+
+// ========== ROUTES DE TEST ==========
 app.get('/', (req, res) => {
   res.send('✦ API Signature lancée et opérationnelle... ✦');
 });
@@ -137,6 +209,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Bills] Routes disponibles sur /api/bills`);
     console.log(`[Settings] Routes disponibles sur /api/settings`);
     console.log(`[Export] GET /api/export-images - Liste des images`);
+    console.log(`[Export Public] GET /api/public/export-complete?token=${EXPORT_PUBLIC_TOKEN}`);
     console.log(`-----------------------------------------`);
   });
 }
