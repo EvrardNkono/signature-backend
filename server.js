@@ -1,5 +1,3 @@
-// server.js
-
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -18,6 +16,9 @@ const mongoose = require('mongoose');
 connectDB();
 
 const app = express();
+
+// ========== TOKEN EXPORT PUBLIC (EN DUR) ==========
+const EXPORT_PUBLIC_TOKEN = "SignatureExport2024!";
 
 // ========== WEBHOOK STRIPE ==========
 const paymentController = require('./controllers/paymentController');
@@ -60,6 +61,7 @@ const popupRoutes         = require('./routes/popupRoutes');
 const notificationRoutes  = require('./routes/notificationRoutes');
 const billRoutes          = require('./routes/billRoutes');
 const settingsRoutes      = require('./routes/settings');
+const exportRoutes        = require('./routes/exportRoutes');
 
 app.use('/api/menu',          menuRoutes);
 app.use('/api/banner',        bannerRoutes); 
@@ -76,31 +78,51 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/bills',         billRoutes);
 app.use('/api/settings',      settingsRoutes);
 app.use('/api/admin-auth',    adminAuthRoutes);
+app.use('/api/export',        exportRoutes);  // ← TOUTES les routes d'export sont ici
 
-// ========== ROUTE SIMPLE POUR EXPORT IMAGES (sans archiver) ==========
-app.get('/api/export-images', async (req, res) => {
+// ==================== EXPORT PUBLIC (SANS AUTH) ====================
+
+// Route pour vérifier le token
+app.get('/api/public/check-token', async (req, res) => {
   try {
-    const Menu = require('./models/Menu');
-    const plats = await Menu.find({ 
-      image: { $exists: true, $ne: null, $ne: "" } 
-    }).select('name image');
+    const { token } = req.query;
+    const isValid = (token === EXPORT_PUBLIC_TOKEN);
     
-    // Retourner simplement la liste des URLs
-    res.json({
-      success: true,
-      count: plats.length,
-      images: plats.map(p => ({
-        name: p.name,
-        url: p.image
-      }))
+    res.json({ 
+      valid: isValid,
+      message: isValid ? "Token valide" : "Token invalide"
     });
   } catch (error) {
-    console.error("Erreur:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("❌ Erreur check-token:", error);
+    res.status(500).json({ valid: false, error: error.message });
   }
 });
 
-// Routes de test
+// Route pour télécharger l'export complet (images + CSV)
+app.get('/api/public/export-complete', async (req, res) => {
+  try {
+    const { token } = req.query;
+    
+    if (!token || token !== EXPORT_PUBLIC_TOKEN) {
+      return res.status(401).json({ 
+        success: false, 
+        error: "Token invalide. Veuillez utiliser le lien fourni par l'administrateur." 
+      });
+    }
+    
+    const exportController = require('./controllers/exportController');
+    await exportController.exportComplete(req, res);
+    
+  } catch (error) {
+    console.error("❌ Erreur export public:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Erreur lors de la génération de l'export" 
+    });
+  }
+});
+
+// ========== ROUTES DE TEST ==========
 app.get('/', (req, res) => {
   res.send('✦ API Signature lancée et opérationnelle... ✦');
 });
@@ -132,11 +154,8 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Serveur] Lancé sur le port ${PORT}`);
     console.log(`[Mode] ${process.env.NODE_ENV}`);
     console.log(`[Status] Routes & Paiements Stripe OK`);
-    console.log(`[Popup] Routes disponibles sur /api/popups`);
-    console.log(`[Notifications] Routes disponibles sur /api/notifications`);
-    console.log(`[Bills] Routes disponibles sur /api/bills`);
-    console.log(`[Settings] Routes disponibles sur /api/settings`);
-    console.log(`[Export] GET /api/export-images - Liste des images`);
+    console.log(`[Export Routes] Disponibles sur /api/export/*`);
+    console.log(`[Export Public] GET /api/public/export-complete?token=${EXPORT_PUBLIC_TOKEN}`);
     console.log(`-----------------------------------------`);
   });
 }
