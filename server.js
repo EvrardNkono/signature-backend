@@ -60,6 +60,7 @@ const popupRoutes         = require('./routes/popupRoutes');
 const notificationRoutes  = require('./routes/notificationRoutes');
 const billRoutes          = require('./routes/billRoutes');
 const settingsRoutes      = require('./routes/settings');
+const exportRoutes        = require('./routes/exportRoutes'); // ← AJOUTER CETTE LIGNE
 
 app.use('/api/menu',          menuRoutes);
 app.use('/api/banner',        bannerRoutes); 
@@ -76,29 +77,31 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/bills',         billRoutes);
 app.use('/api/settings',      settingsRoutes);
 app.use('/api/admin-auth',    adminAuthRoutes);
+app.use('/api/export',        exportRoutes); // ← AJOUTER CETTE LIGNE (les routes d'export)
 
 // ========== ROUTE SIMPLE POUR EXPORT IMAGES (sans archiver) ==========
-app.get('/api/export-images', async (req, res) => {
-  try {
-    const Menu = require('./models/Menu');
-    const plats = await Menu.find({ 
-      image: { $exists: true, $ne: null, $ne: "" } 
-    }).select('name image');
-    
-    // Retourner simplement la liste des URLs
-    res.json({
-      success: true,
-      count: plats.length,
-      images: plats.map(p => ({
-        name: p.name,
-        url: p.image
-      }))
-    });
-  } catch (error) {
-    console.error("Erreur:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// ⚠️ SUPPRIMEZ cette route car elle est en conflit avec exportRoutes
+// app.get('/api/export-images', async (req, res) => {
+//   try {
+//     const Menu = require('./models/Menu');
+//     const plats = await Menu.find({ 
+//       image: { $exists: true, $ne: null, $ne: "" } 
+//     }).select('name image');
+//     
+//     // Retourner simplement la liste des URLs
+//     res.json({
+//       success: true,
+//       count: plats.length,
+//       images: plats.map(p => ({
+//         name: p.name,
+//         url: p.image
+//       }))
+//     });
+//   } catch (error) {
+//     console.error("Erreur:", error);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// });
 
 // Routes de test
 app.get('/', (req, res) => {
@@ -136,7 +139,10 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Notifications] Routes disponibles sur /api/notifications`);
     console.log(`[Bills] Routes disponibles sur /api/bills`);
     console.log(`[Settings] Routes disponibles sur /api/settings`);
-    console.log(`[Export] GET /api/export-images - Liste des images`);
+    console.log(`[Export] Routes disponibles sur /api/export`);
+    console.log(`[Export] GET /api/export/complete - Export complet`);
+    console.log(`[Export] GET /api/export/images/all - Export images uniquement`);
+    console.log(`[Export] GET /api/export/plats-data - Export CSV`);
     console.log(`-----------------------------------------`);
   });
 }
