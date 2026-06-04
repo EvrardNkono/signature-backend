@@ -1,4 +1,4 @@
-// controllers/exportController.js - Version avec CSV propre
+// controllers/exportController.js - Version stable avec CSV propre et JSZip fonctionnel
 const Menu = require('../models/Menu');
 const Category = require('../models/Category');
 const axios = require('axios');
@@ -33,7 +33,7 @@ function sanitizeFileName(name) {
     .substring(0, 50);
 }
 
-// Générer CSV PROPRE avec séparateur point-virgule (meilleur pour Excel français)
+// Générer CSV PROPRE avec séparateur point-virgule
 async function generatePlatsCSV(filterCategoryId = null) {
   let query = {};
   if (filterCategoryId) {
@@ -44,17 +44,14 @@ async function generatePlatsCSV(filterCategoryId = null) {
     .populate('category', 'name univers')
     .lean();
   
-  // En-têtes avec séparateur point-virgule (;)
   let csvContent = "Nom;Description;Prix (€);Catégorie;Univers;Service Midi;Service Soir;Disponible;Offre Active;Quantité Offre;Prix Offert;Image\n";
   
   for (const plat of plats) {
-    // Nettoyer et échapper les guillemets
     const name = plat.name.replace(/["';]/g, '').trim();
     const description = (plat.description || "").replace(/["';]/g, '').trim();
     const categoryName = plat.category?.name?.replace(/["';]/g, '') || "Non catégorisé";
     const univers = plat.category?.univers?.replace(/["';]/g, '') || "Cuisine";
     
-    // Déterminer l'extension de l'image
     let imageName = "";
     if (plat.image) {
       let extension = 'jpg';
@@ -64,7 +61,6 @@ async function generatePlatsCSV(filterCategoryId = null) {
       imageName = `${sanitizeFileName(plat.name)}.${extension}`;
     }
     
-    // Construction de la ligne - utilisation de point-virgule comme séparateur
     const row = [
       name,
       description,
@@ -86,17 +82,13 @@ async function generatePlatsCSV(filterCategoryId = null) {
   return csvContent;
 }
 
-// ==================== EXPORT CSV UNIQUEMENT (propre) ====================
+// ==================== EXPORT CSV UNIQUEMENT ====================
 async function exportPlatsData(req, res) {
   try {
     const csvContent = await generatePlatsCSV();
     
-    // Configuration pour Excel
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=catalogue_restaurant.csv');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    
-    // Ajouter BOM pour UTF-8 (compatibilité Excel)
     res.write('\uFEFF');
     res.end(csvContent);
     
@@ -108,7 +100,7 @@ async function exportPlatsData(req, res) {
   }
 }
 
-// ==================== EXPORT JSON (structure claire) ====================
+// ==================== EXPORT JSON ====================
 async function exportPlatsJSON(req, res) {
   try {
     const plats = await Menu.find({})
@@ -145,10 +137,11 @@ async function exportPlatsJSON(req, res) {
   }
 }
 
-// ==================== EXPORT COMPLET (ZIP avec CSV propre) ====================
+// ==================== EXPORT COMPLET (ZIP) ====================
 async function exportComplete(req, res) {
   try {
-    const JSZip = require('jszip');
+    // Import dynamique de JSZip (obligatoire sur Vercel)
+    const JSZip = (await import('jszip')).default;
     const zip = new JSZip();
     
     const plats = await Menu.find({ 
@@ -161,11 +154,11 @@ async function exportComplete(req, res) {
     
     console.log(`📦 Export complet de ${plats.length} plats...`);
     
-    // 1. Ajouter le CSV propre (séparateur point-virgule)
+    // 1. Ajouter le CSV
     const csvContent = await generatePlatsCSV();
     zip.file("CATALOGUE_RESTAURANT.csv", "\uFEFF" + csvContent);
     
-    // 2. Ajouter un README explicatif
+    // 2. Ajouter le README
     const readme = `# EXPORT SIGNATURE RESTAURANT
 
 ## 📅 Informations
@@ -173,42 +166,22 @@ async function exportComplete(req, res) {
 - Total plats: ${plats.length}
 
 ## 📁 Fichiers inclus
-- CATALOGUE_RESTAURANT.csv : Catalogue des plats (ouvrable avec Excel)
+- CATALOGUE_RESTAURANT.csv : Catalogue des plats
 - images/ : Dossier contenant les photos des plats
 
 ## 📊 Comment ouvrir le CSV dans Excel
 1. Ouvrez Excel
-2. Allez dans "Données" > "À partir d'un fichier texte/CSV"
-3. Sélectionnez le fichier CSV
-4. Séparateur: **Point-virgule (;)**
-5. Encodage: UTF-8
-
-## 📋 Structure du CSV
-| Colonne | Description |
-|---------|-------------|
-| Nom | Nom du plat |
-| Description | Description détaillée |
-| Prix (€) | Prix en euros |
-| Catégorie | Entrée, Plat, Dessert... |
-| Univers | Cuisine ou Boissons |
-| Service Midi | Oui/Non |
-| Service Soir | Oui/Non |
-| Disponible | Oui/Non |
-| Offre Active | Oui/Non |
-| Quantité Offre | Nombre requis pour l'offre |
-| Prix Offert | Prix avec offre |
-| Image | Nom du fichier image |
-
-## 🖼️ Images
-Les images sont nommées selon le nom du plat dans le dossier images/
+2. Données > À partir d'un fichier texte/CSV
+3. Séparateur: Point-virgule (;)
+4. Encodage: UTF-8
 
 ---
-Généré automatiquement par Signature Restaurant
+Généré par Signature Restaurant
 `;
     zip.file("LISEZ_MOI.txt", readme);
     
-    // 3. Ajouter les images (limité à 30 pour performance)
-    const MAX_IMAGES = 30;
+    // 3. Ajouter les images (limitées à 20 pour éviter timeout Vercel)
+    const MAX_IMAGES = 20;
     let successCount = 0;
     const imagesToProcess = plats.slice(0, MAX_IMAGES);
     
@@ -229,7 +202,6 @@ Généré automatiquement par Signature Restaurant
       }
     }
     
-    // Générer le ZIP
     const zipBuffer = await zip.generateAsync({ 
       type: "nodebuffer",
       compression: "DEFLATE",
@@ -241,7 +213,7 @@ Généré automatiquement par Signature Restaurant
     res.setHeader('Content-Length', zipBuffer.length);
     res.send(zipBuffer);
     
-    console.log(`✅ Export complet: CSV + ${successCount} images`);
+    console.log(`✅ Export complet: CSV + ${successCount}/${imagesToProcess.length} images`);
     
   } catch (error) {
     console.error("❌ Erreur export complet:", error);
@@ -249,10 +221,10 @@ Généré automatiquement par Signature Restaurant
   }
 }
 
-// ==================== AUTRES FONCTIONS ====================
+// ==================== EXPORT IMAGES UNIQUEMENT ====================
 async function exportAllPlatImages(req, res) {
   try {
-    const JSZip = require('jszip');
+    const JSZip = (await import('jszip')).default;
     const zip = new JSZip();
     
     const plats = await Menu.find({ 
@@ -263,7 +235,7 @@ async function exportAllPlatImages(req, res) {
       return res.status(404).json({ success: false, message: "Aucune image trouvée" });
     }
     
-    const MAX_IMAGES = 50;
+    const MAX_IMAGES = 30;
     let successCount = 0;
     const imagesToProcess = plats.slice(0, MAX_IMAGES);
     
@@ -290,12 +262,15 @@ async function exportAllPlatImages(req, res) {
     res.setHeader('Content-Disposition', `attachment; filename=signature_images_${Date.now()}.zip`);
     res.send(zipBuffer);
     
+    console.log(`✅ Export images: ${successCount}/${imagesToProcess.length} images`);
+    
   } catch (error) {
-    console.error("❌ Erreur:", error);
+    console.error("❌ Erreur export images:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 }
 
+// ==================== LISTE DES IMAGES ====================
 async function getImagesList(req, res) {
   try {
     const plats = await Menu.find({ image: { $exists: true, $ne: "" } }).select('name image category');
@@ -305,12 +280,13 @@ async function getImagesList(req, res) {
   }
 }
 
+// Stubs
 async function exportCategoryImages(req, res) {
-  res.json({ message: "Fonctionnalité disponible" });
+  res.json({ message: "Fonctionnalité disponible dans exportComplete avec filtre" });
 }
 
 async function exportCompleteByCategory(req, res) {
-  res.json({ message: "Fonctionnalité disponible" });
+  res.json({ message: "Fonctionnalité disponible dans exportComplete avec filtre" });
 }
 
 module.exports = {
