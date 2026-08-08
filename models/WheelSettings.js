@@ -1,0 +1,58 @@
+import mongoose from 'mongoose';
+
+const WheelSettingsSchema = new mongoose.Schema({
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  title: {
+    type: String,
+    default: "🎡 Tentez votre chance"
+  },
+  subtitle: {
+    type: String,
+    default: "Gagnez des plats offerts !"
+  },
+  buttonText: {
+    type: String,
+    default: "Jouer"
+  },
+  // Pour suivre qui a modifié
+  updatedBy: {
+    type: String,
+    default: null
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Mettre à jour updatedAt avant chaque sauvegarde
+WheelSettingsSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+const WheelSettings = mongoose.model('WheelSettings', WheelSettingsSchema);
+
+// Initialiser les settings si inexistants
+export const initializeWheelSettings = async () => {
+  const count = await WheelSettings.countDocuments();
+  if (count === 0) {
+    const defaultSettings = new WheelSettings({
+      isActive: true,
+      title: "🎡 Tentez votre chance",
+      subtitle: "Gagnez des plats offerts !",
+      buttonText: "Jouer"
+    });
+    await defaultSettings.save();
+    console.log('✅ Wheel settings initialized');
+  }
+};
+
+export default WheelSettings;
