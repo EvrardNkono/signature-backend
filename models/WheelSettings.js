@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const WheelSettingsSchema = new mongoose.Schema({
   isActive: {
@@ -41,7 +41,7 @@ WheelSettingsSchema.pre('save', function(next) {
 const WheelSettings = mongoose.model('WheelSettings', WheelSettingsSchema);
 
 // Initialiser les settings si inexistants
-export const initializeWheelSettings = async () => {
+const initializeWheelSettings = async () => {
   const count = await WheelSettings.countDocuments();
   if (count === 0) {
     const defaultSettings = new WheelSettings({
@@ -55,4 +55,5 @@ export const initializeWheelSettings = async () => {
   }
 };
 
-export default WheelSettings;
+module.exports = WheelSettings;
+module.exports.initializeWheelSettings = initializeWheelSettings;

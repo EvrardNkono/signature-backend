@@ -1,10 +1,10 @@
-import WheelSettings from '../models/WheelSettings.js';
+const WheelSettings = require('../models/WheelSettings');
 
 // ==================== GET ====================
-export const getWheelSettings = async (req, res) => {
+const getWheelSettings = async (req, res) => {
   try {
     let settings = await WheelSettings.findOne();
-    
+
     // Si aucun setting n'existe, créer les defaults
     if (!settings) {
       settings = new WheelSettings({
@@ -15,7 +15,7 @@ export const getWheelSettings = async (req, res) => {
       });
       await settings.save();
     }
-    
+
     res.status(200).json({
       success: true,
       data: settings
@@ -30,26 +30,26 @@ export const getWheelSettings = async (req, res) => {
 };
 
 // ==================== PUT ====================
-export const updateWheelSettings = async (req, res) => {
+const updateWheelSettings = async (req, res) => {
   try {
     const { isActive, title, subtitle, buttonText } = req.body;
-    
+
     let settings = await WheelSettings.findOne();
-    
+
     if (!settings) {
       settings = new WheelSettings();
     }
-    
+
     // Mettre à jour les champs
     if (isActive !== undefined) settings.isActive = isActive;
     if (title) settings.title = title;
     if (subtitle) settings.subtitle = subtitle;
     if (buttonText) settings.buttonText = buttonText;
-    
+
     settings.updatedBy = req.user?.id || 'admin';
-    
+
     await settings.save();
-    
+
     res.status(200).json({
       success: true,
       message: 'Paramètres du jeu mis à jour',
@@ -65,21 +65,21 @@ export const updateWheelSettings = async (req, res) => {
 };
 
 // ==================== TOGGLE ====================
-export const toggleWheelGame = async (req, res) => {
+const toggleWheelGame = async (req, res) => {
   try {
     const { isActive } = req.body;
-    
+
     let settings = await WheelSettings.findOne();
-    
+
     if (!settings) {
       settings = new WheelSettings();
     }
-    
+
     settings.isActive = isActive !== undefined ? isActive : !settings.isActive;
     settings.updatedBy = req.user?.id || 'admin';
-    
+
     await settings.save();
-    
+
     res.status(200).json({
       success: true,
       message: `Jeu ${settings.isActive ? 'activé' : 'désactivé'}`,
@@ -95,11 +95,11 @@ export const toggleWheelGame = async (req, res) => {
 };
 
 // ==================== STATS ====================
-export const getWheelStats = async (req, res) => {
+const getWheelStats = async (req, res) => {
   try {
     // Compter les participations (à ajouter dans votre logique)
     const totalPlays = 0; // À implémenter avec un modèle de logs
-    
+
     res.status(200).json({
       success: true,
       data: {
@@ -114,4 +114,11 @@ export const getWheelStats = async (req, res) => {
       message: 'Erreur lors de la récupération des stats'
     });
   }
+};
+
+module.exports = {
+  getWheelSettings,
+  updateWheelSettings,
+  toggleWheelGame,
+  getWheelStats
 };
