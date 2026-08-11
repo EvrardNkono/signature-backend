@@ -33,9 +33,10 @@ const WheelSettingsSchema = new mongoose.Schema({
 });
 
 // Mettre à jour updatedAt avant chaque sauvegarde
-WheelSettingsSchema.pre('save', function(next) {
+// Pas de parametre "next" ici : Mongoose n'attend alors pas de callback
+// et enchaine automatiquement apres l'execution synchrone de la fonction.
+WheelSettingsSchema.pre('save', function () {
   this.updatedAt = Date.now();
-  next();
 });
 
 const WheelSettings = mongoose.model('WheelSettings', WheelSettingsSchema);
