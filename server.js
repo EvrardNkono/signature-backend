@@ -56,6 +56,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Middleware pour capturer les erreurs
+app.use((err, req, res, next) => {
+  console.error('❌ Erreur serveur:', err);
+  console.error('Stack:', err.stack);
+  res.status(500).json({
+    error: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
 app.use(express.json({ limit: '20mb' })); 
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
