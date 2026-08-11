@@ -51,6 +51,10 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
   credentials: true
 }));
+app.use((req, res, next) => {
+  console.log(`📝 ${req.method} ${req.url}`);
+  next();
+});
 
 app.use(express.json({ limit: '20mb' })); 
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
