@@ -78,6 +78,7 @@ const billRoutes          = require('./routes/billRoutes');
 const settingsRoutes      = require('./routes/settings');
 const exportRoutes        = require('./routes/exportRoutes');
 const wheelRoutes         = require('./routes/wheelRoutes'); // 🎡 NOUVEAU - Jeu de la Roue
+const blogRoutes          = require('./routes/blogRoutes'); // 📰 NOUVEAU - Blog du restaurant
 
 // ========== APPLICATION DES ROUTES ==========
 app.use('/api/menu',          menuRoutes);
@@ -97,6 +98,7 @@ app.use('/api/settings',      settingsRoutes);
 app.use('/api/admin-auth',    adminAuthRoutes);
 app.use('/api/export',        exportRoutes);
 app.use('/api/wheel',         wheelRoutes); // 🎡 NOUVEAU - Routes du jeu de la roue
+app.use('/api/blog',          blogRoutes); // 📰 NOUVEAU - Routes du blog
 
 // ========== ROUTE SIMPLE POUR EXPORT IMAGES (sans archiver) ==========
 app.get('/api/export-images', async (req, res) => {
@@ -166,6 +168,14 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Wheel] PUT /api/wheel/settings - Mettre à jour les settings`);
     console.log(`[Wheel] PATCH /api/wheel/toggle - Activer/Désactiver le jeu`);
     console.log(`[Wheel] GET /api/wheel/stats - Statistiques du jeu`);
+    console.log(`[Blog] 📰 Routes disponibles sur /api/blog`);
+    console.log(`[Blog] GET /api/blog - Liste des articles publiés`);
+    console.log(`[Blog] GET /api/blog/:slug - Détail d'un article`);
+    console.log(`[Blog] GET /api/blog/admin - Tous les articles (admin)`);
+    console.log(`[Blog] POST /api/blog - Créer un article`);
+    console.log(`[Blog] PUT /api/blog/:id - Modifier un article`);
+    console.log(`[Blog] PATCH /api/blog/:id/toggle-publish - Publier/dépublier`);
+    console.log(`[Blog] DELETE /api/blog/:id - Supprimer un article`);
     console.log(`-----------------------------------------`);
   });
 }
