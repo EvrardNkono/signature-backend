@@ -56,8 +56,6 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
 app.use(express.json({ limit: '20mb' })); 
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
@@ -77,8 +75,9 @@ const notificationRoutes  = require('./routes/notificationRoutes');
 const billRoutes          = require('./routes/billRoutes');
 const settingsRoutes      = require('./routes/settings');
 const exportRoutes        = require('./routes/exportRoutes');
-const wheelRoutes         = require('./routes/wheelRoutes'); // 🎡 NOUVEAU - Jeu de la Roue
-const blogRoutes          = require('./routes/blogRoutes'); // 📰 NOUVEAU - Blog du restaurant
+const wheelRoutes         = require('./routes/wheelRoutes'); // 🎡 Jeu de la Roue
+const blogRoutes          = require('./routes/blogRoutes'); // 📰 Blog du restaurant
+const quizRoutes          = require('./routes/quizRoutes'); // 🧑‍🍳 NOUVEAU - Quiz "La Question du Chef"
 
 // ========== APPLICATION DES ROUTES ==========
 app.use('/api/menu',          menuRoutes);
@@ -97,8 +96,9 @@ app.use('/api/bills',         billRoutes);
 app.use('/api/settings',      settingsRoutes);
 app.use('/api/admin-auth',    adminAuthRoutes);
 app.use('/api/export',        exportRoutes);
-app.use('/api/wheel',         wheelRoutes); // 🎡 NOUVEAU - Routes du jeu de la roue
-app.use('/api/blog',          blogRoutes); // 📰 NOUVEAU - Routes du blog
+app.use('/api/wheel',         wheelRoutes); // 🎡 Jeu de la roue
+app.use('/api/blog',          blogRoutes); // 📰 Blog du restaurant
+app.use('/api/quiz',          quizRoutes); // 🧑‍🍳 Quiz "La Question du Chef"
 
 // ========== ROUTE SIMPLE POUR EXPORT IMAGES (sans archiver) ==========
 app.get('/api/export-images', async (req, res) => {
@@ -176,10 +176,25 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     console.log(`[Blog] PUT /api/blog/:id - Modifier un article`);
     console.log(`[Blog] PATCH /api/blog/:id/toggle-publish - Publier/dépublier`);
     console.log(`[Blog] DELETE /api/blog/:id - Supprimer un article`);
+    console.log(`[Quiz] 🧑‍🍳 Routes disponibles sur /api/quiz`);
+    console.log(`[Quiz] GET /api/quiz/sessions - Liste des sessions`);
+    console.log(`[Quiz] GET /api/quiz/session/active - Session active`);
+    console.log(`[Quiz] POST /api/quiz/sessions - Créer une session`);
+    console.log(`[Quiz] PUT /api/quiz/sessions/:id - Modifier une session`);
+    console.log(`[Quiz] DELETE /api/quiz/sessions/:id - Supprimer une session`);
+    console.log(`[Quiz] GET /api/quiz/questions/:sessionId - Questions d'une session`);
+    console.log(`[Quiz] POST /api/quiz/questions - Créer une question`);
+    console.log(`[Quiz] PUT /api/quiz/questions/:id - Modifier une question`);
+    console.log(`[Quiz] DELETE /api/quiz/questions/:id - Supprimer une question`);
+    console.log(`[Quiz] POST /api/quiz/verifier - Vérifier une réponse`);
+    console.log(`[Quiz] GET /api/quiz/lots - Liste des lots`);
+    console.log(`[Quiz] POST /api/quiz/lots - Créer un lot`);
+    console.log(`[Quiz] PUT /api/quiz/lots/:id - Modifier un lot`);
+    console.log(`[Quiz] DELETE /api/quiz/lots/:id - Supprimer un lot`);
+    console.log(`[Quiz] POST /api/quiz/roue - Tourner la roue (100% gagnant)`);
     console.log(`-----------------------------------------`);
   });
 }
-
 
 // Middleware pour capturer les erreurs
 app.use((err, req, res, next) => {
@@ -190,4 +205,5 @@ app.use((err, req, res, next) => {
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
+
 module.exports = app;
