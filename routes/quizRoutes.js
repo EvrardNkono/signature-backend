@@ -11,6 +11,9 @@ router.post('/sessions', quizController.createSession);
 router.put('/sessions/:id', quizController.updateSession);
 router.delete('/sessions/:id', quizController.deleteSession);
 
+// ✅ NOUVEAU - Activer/Désactiver le jeu
+router.patch('/sessions/:id/toggle', quizController.toggleJeu);
+
 // ============================================================
 // QUESTIONS
 // ============================================================
@@ -33,5 +36,10 @@ router.delete('/lots/:id', quizController.deleteLot);
 // ROUE
 // ============================================================
 router.post('/roue', quizController.spinWheel);
+
+// ============================================================
+// STATISTIQUES
+// ============================================================
+router.get('/statistiques', quizController.getStatistiques);
 
 module.exports = router;

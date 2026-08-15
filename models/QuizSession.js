@@ -18,6 +18,11 @@ const QuizSessionSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  // ✅ NOUVEAU - Activation globale du jeu
+  jeuActif: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

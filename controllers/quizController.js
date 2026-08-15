@@ -77,6 +77,32 @@ exports.deleteSession = async (req, res) => {
 };
 
 // ============================================================
+// ACTIVATION/DÉSACTIVATION DU JEU
+// ============================================================
+
+exports.toggleJeu = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { actif } = req.body;
+    
+    const session = await QuizSession.findById(id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session non trouvée' });
+    }
+    
+    session.jeuActif = actif !== undefined ? actif : !session.jeuActif;
+    await session.save();
+    
+    res.json({
+      message: `Jeu ${session.jeuActif ? 'activé' : 'désactivé'}`,
+      jeuActif: session.jeuActif,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ============================================================
 // QUESTIONS
 // ============================================================
 
@@ -280,6 +306,34 @@ exports.spinWheel = async (req, res) => {
       message: `🎉 Félicitations ! Vous avez gagné : ${selectedLot.nom}`,
     });
 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ============================================================
+// STATISTIQUES (simulées)
+// ============================================================
+
+exports.getStatistiques = async (req, res) => {
+  try {
+    // Comme on utilise Local Storage, les stats sont limitées
+    // On retourne des données par défaut
+    res.json({
+      totalParties: 0,
+      totalJoueurs: 0,
+      moyenneScore: 0,
+      tauxReussite: 0,
+      repartitionScores: {
+        score0: 0,
+        score1: 0,
+        score2: 0,
+        score3: 0,
+        score4: 0,
+        score5: 0,
+      },
+      lotsDistribues: [],
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
