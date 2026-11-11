@@ -77,6 +77,7 @@ const settingsRoutes      = require('./routes/settings');
 const exportRoutes        = require('./routes/exportRoutes');
 const wheelRoutes         = require('./routes/wheelRoutes'); // 🎡 Jeu de la Roue
 const blogRoutes          = require('./routes/blogRoutes'); // 📰 Blog du restaurant
+const reservationRoutes   = require('./routes/reservationRoutes'); // 📅 Réservations de table
 const quizRoutes          = require('./routes/quizRoutes'); // 🧑‍🍳 NOUVEAU - Quiz "La Question du Chef"
 
 // ========== APPLICATION DES ROUTES ==========
@@ -98,6 +99,7 @@ app.use('/api/admin-auth',    adminAuthRoutes);
 app.use('/api/export',        exportRoutes);
 app.use('/api/wheel',         wheelRoutes); // 🎡 Jeu de la roue
 app.use('/api/blog',          blogRoutes); // 📰 Blog du restaurant
+app.use('/api/reservations',  reservationRoutes); // 📅 Réservations de table
 app.use('/api/quiz',          quizRoutes); // 🧑‍🍳 Quiz "La Question du Chef"
 
 // ========== ROUTE SIMPLE POUR EXPORT IMAGES (sans archiver) ==========
